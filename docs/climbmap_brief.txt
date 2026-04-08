@@ -1,0 +1,97 @@
+1ClimbMap Project Brief
+Selected product direction, technical stack, data strategy, and phased execution plan
+Project vision: Build a live climbing map that begins with OpenStreetMap / Overpass 
+data, then grows into a hybrid platform with user-submitted suggestions, edit proposals, 
+and eventually curated high-quality listings. The product should support indoor gyms, 
+outdoor boulders, crags, and navigation handoff to Google Maps or other navigation 
+apps.
+1. Selected Product Decisions
+Area Chosen direction
+Core data strategyStart with OpenStreetMap / Overpass imports, then layer in 
+user submissions and suggested edits. Manual curation 
+comes later once the product has enough usage and clear 
+gaps.
+Long-term data modelHybrid model (Option C): public seed data plus community 
+enrichment and later curated verification.
+Primary stackStack 1: Next.js + TypeScript frontend, Shadcn UI for 
+interface building, MapLibre or Mapbox-style map 
+rendering, Supabase backend, PostgreSQL + PostGIS for 
+geospatial storage and querying.
+UI approachUse Shadcn UI to accelerate polished cards, drawers, dialogs, 
+filter panels, and admin/moderation views without slowing 
+down product iteration.
+Feature rolloutShip in phases: read-only map first, then searchable details 
+and filters, then user submissions, then moderation/quality 
+improvements.
+Navigation integrationEach climbing location should expose a quick action to open 
+Google Maps directions or another installed navigation app 
+using a generated deep link or browser link.
+2. Recommended Architecture
+The initial version should prioritize a clean geospatial foundation over product complexity. The 
+system only needs to answer one question well at first: “What climbing places exist in the current 
+map area, and how can the user reach them?”
+2Frontend: Next.js with TypeScript for a strong web-first product foundation. Shadcn UI can 
+provide consistent building blocks for filters, search, cards, dialogs, and moderation tools.
+Map layer: Use an interactive web map component to render clustered climbing markers, 
+pan and zoom behavior, and viewport-based loading.
+Backend: Supabase provides a practical backend with authentication, storage, and 
+PostgreSQL.
+Database: PostgreSQL with PostGIS should store all place coordinates, geometry data, and 
+distance-aware queries.
+Auth and storage: Supabase Auth can support sign-in when user suggestions go live, while 
+Supabase Storage can hold uploaded images and future condition reports.
+API behavior: The frontend should send the current map bounds and selected filters; the 
+backend should return only lightweight records within that viewport to keep map 
+performance fast.
+3. Phased Execution Plan
+PhaseGoal Key deliverables
+1Read-only live mapMap UI, viewport-based marker loading, 
+clustering, location search, basic details panel, 
+and OSM / Overpass import pipeline.
+2Place details and filtersIndoor/outdoor filters, discipline tags, basic 
+amenities, favorite/save actions, and more 
+polished detail cards.
+3User suggestionsUsers can suggest missing climbing spots, submit  
+edit proposals, and attach supporting notes or 
+photos.
+4Moderation and qualityAdmin review workflow, duplicate detection, 
+verification flags, and higher-confidence listings.
+5Expanded enrichmentManual curation for major gyms and key 
+outdoor areas, user conditions, richer metadata, 
+and stronger search quality.
+4. Data Strategy
+The project should begin with the fastest scalable seed source, not the most perfect source. 
+OpenStreetMap / Overpass is the right starting point because it allows the map to become useful 
+early. After that, the product can improve quality through users and, later, manual curation.
+1.Seed the database using OSM / Overpass imports for climbing-related locations.
+2.Normalize imported records into a consistent internal schema for gyms, boulders, crags, and 
+related place types.
+33.Allow users to submit new places or propose edits for existing places once authentication is in  
+place.
+4.Queue user suggestions for moderation rather than writing directly to the public dataset.
+5.Add manual curation later for high-value regions, major gyms, and records with poor 
+imported metadata.
+5. Navigation Integration
+A practical user experience improvement is a direct navigation handoff from the place detail 
+panel. Each location should include actions such as “Open in Google Maps” or “Navigate.” The app  
+can generate a Google Maps directions URL using the destination coordinates or address and 
+open it in a new tab or deep link. On mobile, this can later expand into app-aware handling for 
+Google Maps, Apple Maps, Waze, or other installed navigation apps.
+6. Recommended MVP Scope
+Ottawa or Ontario-focused first release rather than global coverage.
+Interactive map with climbing markers and clustering.
+Indoor/outdoor and discipline filters.
+Detail panel with name, type, location, notes, and navigation button.
+OSM / Overpass ingestion pipeline.
+Basic user suggestion form prepared for a later authenticated release.
+7. Why This Direction Works
+This approach balances speed and product ambition well. Starting with OSM keeps the project 
+feasible, while the hybrid model preserves room for better quality and stronger differentiation 
+later. The selected stack also gives the project strong technical depth: geospatial queries, scalable 
+map loading, typed frontend architecture, a modern UI system, and a credible path toward 
+community-driven growth.
+Summary: Build the first version as a web-first geospatial app with Next.js, TypeScript, Shadcn 
+UI, Supabase, and PostGIS. Start with OSM / Overpass imports, then expand through user 
+suggestions and edit proposals, and later invest in manual curation for quality-critical areas. Add 
+Google Maps handoff early because it directly improves user usefulness with low implementation  
+cost.
