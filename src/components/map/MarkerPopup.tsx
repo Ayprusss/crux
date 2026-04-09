@@ -6,11 +6,12 @@ interface MarkerPopupProps {
   place: Place
   onClose: () => void
   onViewDetails: (place: Place) => void
+  isClosing?: boolean
 }
 
-export default function MarkerPopup({ place, onClose, onViewDetails }: MarkerPopupProps) {
+export default function MarkerPopup({ place, onClose, onViewDetails, isClosing = false }: MarkerPopupProps) {
   return (
-    <div className="bg-background border rounded-xl shadow-xl p-4 min-w-[220px] max-w-[280px] animate-in fade-in zoom-in-95 duration-200">
+    <div className={`bg-background border rounded-xl shadow-xl p-4 min-w-[220px] max-w-[280px] duration-200 ${isClosing ? "animate-out fade-out zoom-out-95 fill-mode-forwards" : "animate-in fade-in zoom-in-95"}`}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <h3 className="font-bold text-sm text-foreground leading-tight">{place.name}</h3>
         <button
