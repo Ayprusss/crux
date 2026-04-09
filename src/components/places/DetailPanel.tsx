@@ -9,9 +9,10 @@ import { useState } from "react"
 interface DetailPanelProps {
   place: Place
   onClose: () => void
+  onEdit?: () => void
 }
 
-export default function DetailPanel({ place, onClose }: DetailPanelProps) {
+export default function DetailPanel({ place, onClose, onEdit }: DetailPanelProps) {
   const { toggleFavorite, isFavorite, isLoaded } = useFavorites()
   const [copied, setCopied] = useState(false)
 
@@ -156,25 +157,37 @@ export default function DetailPanel({ place, onClose }: DetailPanelProps) {
       </div>
 
       {/* Action bar */}
-      <div className="p-4 border-t bg-muted/30 flex gap-2">
-        <a
-          href={`https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-1"
-        >
-          <Button className="w-full rounded-xl font-bold shadow-md shadow-primary/10 h-11">
-            <Navigation className="mr-2 h-4 w-4" />
-            Navigate
+      <div className="p-4 border-t bg-muted/30 flex flex-col gap-2">
+        <div className="flex gap-2">
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1"
+          >
+            <Button className="w-full rounded-xl font-bold shadow-md shadow-primary/10 h-11">
+              <Navigation className="mr-2 h-4 w-4" />
+              Navigate
+            </Button>
+          </a>
+          <Button 
+            variant="outline" 
+            className="rounded-xl h-11 px-4 text-muted-foreground hover:text-foreground"
+            onClick={handleShare}
+          >
+            {copied ? "Copied!" : <Share2 className="h-4 w-4" />}
           </Button>
-        </a>
-        <Button 
-          variant="outline" 
-          className="rounded-xl h-11 px-4 text-muted-foreground hover:text-foreground"
-          onClick={handleShare}
-        >
-          {copied ? "Copied!" : <Share2 className="h-4 w-4" />}
-        </Button>
+        </div>
+        
+        {onEdit && (
+          <Button 
+            variant="ghost" 
+            className="w-full rounded-xl h-9 mt-1 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted"
+            onClick={onEdit}
+          >
+            Wrong info? Suggest an edit
+          </Button>
+        )}
       </div>
     </div>
   )
