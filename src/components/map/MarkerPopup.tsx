@@ -13,7 +13,16 @@ export default function MarkerPopup({ place, onClose, onViewDetails, isClosing =
   return (
     <div className={`bg-background border rounded-xl shadow-xl p-4 min-w-[220px] max-w-[280px] duration-200 ${isClosing ? "animate-out fade-out zoom-out-95 fill-mode-forwards" : "animate-in fade-in zoom-in-95"}`}>
       <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="font-bold text-sm text-foreground leading-tight">{place.name}</h3>
+        <h3 className="font-bold text-sm text-foreground leading-tight flex items-center gap-1.5">
+          {place.name}
+          {place.verified && (
+            <span className="shrink-0 flex items-center justify-center bg-blue-500 rounded-full w-4 h-4" title="Admin Verified">
+              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </span>
+          )}
+        </h3>
         <button
           onClick={onClose}
           className="text-muted-foreground hover:text-foreground transition-colors shrink-0 text-lg leading-none"
