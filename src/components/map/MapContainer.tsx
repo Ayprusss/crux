@@ -103,8 +103,17 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
   const { places, loading, totalCached } = usePlaces(bounds, filters, savedIds)
 
   const [popupPlace, setPopupPlace] = useState<Place | null>(null)
+  const [isClosingPopup, setIsClosingPopup] = useState(false)
   const [detailPlace, setDetailPlace] = useState<Place | null>(null)
   const [isMapLoaded, setIsMapLoaded] = useState(false)
+
+  const handleClosePopup = useCallback(() => {
+    setIsClosingPopup(true)
+    setTimeout(() => {
+      setPopupPlace(null)
+      setIsClosingPopup(false)
+    }, 200)
+  }, [])
 
   const [isPickingLocation, setIsPickingLocation] = useState(false)
   const [suggestionMode, setSuggestionMode] = useState<"add" | "edit" | null>(null)
@@ -144,7 +153,7 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
 
     const feature = e.features?.[0]
     if (!feature || !mapRef.current) {
-      setPopupPlace(null)
+      handleClosePopup()
       return
     }
 
@@ -170,14 +179,25 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
     const place = featureToPlace(
       feature.properties as Record<string, unknown>
     )
-    setPopupPlace(place)
-  }, [isPickingLocation])
+    
+    if (popupPlace && popupPlace.id !== place.id) {
+      // Animate the old one out before showing the new one
+      setIsClosingPopup(true)
+      setTimeout(() => {
+        setPopupPlace(place)
+        setIsClosingPopup(false)
+      }, 200)
+    } else {
+      setIsClosingPopup(false) // reset in case we intercept a closing animation
+      setPopupPlace(place)
+    }
+  }, [isPickingLocation, handleClosePopup, popupPlace])
 
   /** Open detail panel */
   const onViewDetails = useCallback((place: Place) => {
-    setPopupPlace(null)
+    handleClosePopup()
     setDetailPlace(place)
-  }, [])
+  }, [handleClosePopup])
 
   /** Fly map to a searched location */
   const onSearchSelect = useCallback((lat: number, lng: number) => {
@@ -353,8 +373,9 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
           >
             <MarkerPopup
               place={popupPlace}
-              onClose={() => setPopupPlace(null)}
+              onClose={handleClosePopup}
               onViewDetails={onViewDetails}
+              isClosing={isClosingPopup}
             />
           </Popup>
         )}
