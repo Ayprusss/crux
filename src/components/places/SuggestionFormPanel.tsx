@@ -156,8 +156,9 @@ export default function SuggestionFormPanel({
   }
 
   return (
-    <div className="absolute top-0 right-0 h-full w-full sm:w-[450px] bg-background border-l shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-300">
-      <div className="flex items-center justify-between p-6 border-b">
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 pointer-events-auto">
+      <div className="w-full max-w-[500px] max-h-[90vh] bg-background border rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 overflow-hidden">
+        <div className="flex items-center justify-between p-5 border-b">
         <h2 className="text-xl font-bold text-foreground">
           {mode === "add" ? "Suggest a Place" : "Propose Edit"}
         </h2>
@@ -345,6 +346,7 @@ export default function SuggestionFormPanel({
           </Button>
         </div>
       )}
+      </div>
     </div>
   )
 }
