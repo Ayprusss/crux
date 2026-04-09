@@ -24,7 +24,7 @@ export default function MapPage() {
 
   return (
     <div className="flex flex-col h-screen bg-background font-sans">
-      <Navbar showMapButton={false} onToggleSaved={() => setIsSavedOpen(!isSavedOpen)} />
+      <Navbar showMapButton={false} showLinks={false} onToggleSaved={() => setIsSavedOpen(!isSavedOpen)} />
       <main className="flex-1 relative overflow-hidden">
         <MapContainer jumpCoords={jumpCoords} isSavedOpen={isSavedOpen} />
         
