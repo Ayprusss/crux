@@ -1,7 +1,9 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { useState } from "react"
 import Navbar from "@/components/layout/Navbar"
+import SavedPlacesPanel from "@/components/places/SavedPlacesPanel"
 
 // Dynamically import MapContainer with SSR disabled (MapLibre needs the browser)
 const MapContainer = dynamic(() => import("@/components/map/MapContainer"), {
@@ -17,11 +19,21 @@ const MapContainer = dynamic(() => import("@/components/map/MapContainer"), {
 })
 
 export default function MapPage() {
+  const [isSavedOpen, setIsSavedOpen] = useState(false)
+  const [jumpCoords, setJumpCoords] = useState<{lat: number, lng: number} | null>(null)
+
   return (
     <div className="flex flex-col h-screen bg-background font-sans">
-      <Navbar />
+      <Navbar showMapButton={false} onToggleSaved={() => setIsSavedOpen(!isSavedOpen)} />
       <main className="flex-1 relative overflow-hidden">
-        <MapContainer />
+        <MapContainer jumpCoords={jumpCoords} />
+        
+        {isSavedOpen && (
+          <SavedPlacesPanel 
+            onClose={() => setIsSavedOpen(false)}
+            onJumpToMap={(lat, lng) => setJumpCoords({ lat, lng })}
+          />
+        )}
       </main>
     </div>
   )
