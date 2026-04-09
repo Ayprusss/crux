@@ -16,6 +16,9 @@ import MarkerPopup from "@/components/map/MarkerPopup"
 import DetailPanel from "@/components/places/DetailPanel"
 import SearchBar from "@/components/search/SearchBar"
 import FilterBar from "@/components/places/FilterBar"
+import SuggestionFormPanel from "@/components/places/SuggestionFormPanel"
+import { Plus, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 // Force maplibre-gl into the react-map-gl integration
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -62,15 +65,15 @@ function placesToGeoJSON(places: Place[]): GeoJSON.FeatureCollection {
 }
 
 /** Reconstruct a Place from GeoJSON feature properties */
-function featureToPlace(properties: Record<string, unknown>, coords: number[]): Place {
+function featureToPlace(properties: Record<string, unknown>): Place {
   return {
     id: properties.id as string,
     name: properties.name as string,
     slug: (properties.slug as string) || null,
     type: properties.type as Place["type"],
     environment: properties.environment as Place["environment"],
-    latitude: coords[1],
-    longitude: coords[0],
+    latitude: properties.latitude as number,
+    longitude: properties.longitude as number,
     address: (properties.address as string) || null,
     city: (properties.city as string) || null,
     region: (properties.region as string) || null,
@@ -103,6 +106,14 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
   const [detailPlace, setDetailPlace] = useState<Place | null>(null)
   const [isMapLoaded, setIsMapLoaded] = useState(false)
 
+  const [isPickingLocation, setIsPickingLocation] = useState(false)
+  const [suggestionMode, setSuggestionMode] = useState<"add" | "edit" | null>(null)
+  const [suggestionCoords, setSuggestionCoords] = useState<{ lat: number; lng: number } | undefined>()
+
+  const [cursor, setCursor] = useState("grab")
+  const onMouseEnter = useCallback(() => setCursor("pointer"), [])
+  const onMouseLeave = useCallback(() => setCursor("grab"), [])
+
   const geojson = placesToGeoJSON(places)
 
   /** Handle map load — trigger initial data fetch */
@@ -124,6 +135,13 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
 
   /** Handle map click — route to cluster zoom or marker popup */
   const onMapClick = useCallback((e: MapLayerMouseEvent) => {
+    if (isPickingLocation) {
+      setSuggestionCoords({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+      setIsPickingLocation(false)
+      setSuggestionMode("add")
+      return
+    }
+
     const feature = e.features?.[0]
     if (!feature || !mapRef.current) {
       setPopupPlace(null)
@@ -149,13 +167,11 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
     }
 
     // Individual marker click → show popup
-    const geometry = feature.geometry as GeoJSON.Point
     const place = featureToPlace(
-      feature.properties as Record<string, unknown>,
-      geometry.coordinates
+      feature.properties as Record<string, unknown>
     )
     setPopupPlace(place)
-  }, [])
+  }, [isPickingLocation])
 
   /** Open detail panel */
   const onViewDetails = useCallback((place: Place) => {
@@ -191,7 +207,7 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
   return (
     <div className="relative w-full h-full">
       {/* Top Controls UI Layer (pointer-events-none so map is clickable through empty space) */}
-      <div className="absolute top-4 left-4 right-4 z-40 pointer-events-none flex flex-col gap-3 items-start">
+      <div className="absolute top-4 left-4 z-40 pointer-events-none flex flex-col items-start gap-3">
         <div className="pointer-events-auto">
           <SearchBar onSelect={onSearchSelect} />
         </div>
@@ -201,6 +217,27 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
           toggleDiscipline={toggleDiscipline}
           resetFilters={resetFilters}
         />
+        
+        {/* Add Place Button */}
+        <div className="pointer-events-auto">
+          <Button 
+            className={`rounded-xl shadow-md border gap-2 transition-all duration-300 ${isPickingLocation ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' : 'bg-background hover:bg-background/90 text-foreground'}`}
+            onClick={() => {
+              if (isPickingLocation) {
+                setIsPickingLocation(false)
+              } else {
+                setIsPickingLocation(true)
+                setPopupPlace(null)
+                setDetailPlace(null)
+              }
+            }}
+          >
+            {isPickingLocation ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            <span className="hidden sm:inline font-semibold">
+              {isPickingLocation ? "Cancel" : "Suggest Place"}
+            </span>
+          </Button>
+        </div>
       </div>
       <Map
         ref={mapRef}
@@ -216,8 +253,10 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
         onLoad={onMapLoad}
         onMoveEnd={onMoveEnd}
         onClick={onMapClick}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
         interactiveLayerIds={["clusters", "unclustered-point"]}
-        cursor="grab"
+        cursor={isPickingLocation ? "crosshair" : cursor}
         style={{ width: "100%", height: "100%" }}
       >
         {/* Navigation controls */}
@@ -341,6 +380,18 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
         <DetailPanel
           place={detailPlace}
           onClose={() => setDetailPlace(null)}
+          onEdit={() => setSuggestionMode("edit")}
+        />
+      )}
+
+      {/* Suggestion Form Panel */}
+      {suggestionMode && (
+        <SuggestionFormPanel
+          mode={suggestionMode}
+          place={suggestionMode === "edit" && detailPlace ? detailPlace : undefined}
+          coordinates={suggestionCoords}
+          onClose={() => setSuggestionMode(null)}
+          onSuccess={() => setSuggestionMode(null)}
         />
       )}
     </div>
