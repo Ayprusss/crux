@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { supabase } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 import type { Place, MapBounds } from "@/types/place"
+import type { FilterState } from "@/types/filters"
 
 const PAGE_SIZE = 1000
 
@@ -14,6 +15,7 @@ async function fetchAllPlaces(): Promise<Place[]> {
   const allPlaces: Place[] = []
   let page = 0
   let hasMore = true
+  const supabase = createClient()
 
   while (hasMore) {
     const from = page * PAGE_SIZE
@@ -55,11 +57,11 @@ function isInBounds(place: Place, bounds: MapBounds): boolean {
 
 /**
  * Hook that loads ALL places once on mount and filters them
- * client-side based on the current viewport bounds.
+ * client-side based on the current viewport bounds and selected filters.
  *
  * This is fast and avoids repeated network requests on every pan/zoom.
  */
-export function usePlaces(bounds: MapBounds | null) {
+export function usePlaces(bounds: MapBounds | null, filters: FilterState, savedIds: string[] = []) {
   const [allPlaces, setAllPlaces] = useState<Place[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -94,11 +96,40 @@ export function usePlaces(bounds: MapBounds | null) {
     }
   }, [])
 
-  // Filter by current viewport bounds (instant, no network call)
+  // Filter by current viewport bounds and FilterState (instant)
   const places = useMemo(() => {
-    if (!bounds || allPlaces.length === 0) return allPlaces
-    return allPlaces.filter((p) => isInBounds(p, bounds))
-  }, [allPlaces, bounds])
+    if (allPlaces.length === 0) return allPlaces
+
+    return allPlaces.filter((p) => {
+      // 1. Check bounds
+      if (bounds && !isInBounds(p, bounds)) return false
+
+      // 2. Check environment filter
+      if (filters.environment !== "all" && p.environment !== filters.environment) {
+        return false
+      }
+
+      // 3. Check type filter (not fully used yet but supported)
+      if (filters.type !== "all" && p.type !== filters.type) {
+        return false
+      }
+
+      // 4. Check favorites filter
+      if (filters.favoritesOnly && !savedIds.includes(p.id)) {
+        return false
+      }
+
+      // 5. Check disciplines (must have AT LEAST ONE matching discipline if filters are selected)
+      if (filters.disciplines.length > 0) {
+        const hasMatchingDiscipline = filters.disciplines.some((disc) =>
+          p.disciplines.includes(disc)
+        )
+        if (!hasMatchingDiscipline) return false
+      }
+
+      return true
+    })
+  }, [allPlaces, bounds, filters, savedIds])
 
   return { places, loading, error, totalCached: allPlaces.length }
 }

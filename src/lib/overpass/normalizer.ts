@@ -64,12 +64,13 @@ function inferEnvironment(tags: Record<string, string>): PlaceInsert["environmen
  */
 function extractDisciplines(tags: Record<string, string>): string[] {
   const disciplines: string[] = []
-  if (tags["climbing:sport"] === "yes") disciplines.push("sport")
-  if (tags["climbing:trad"] === "yes") disciplines.push("trad")
-  if (tags["climbing:boulder"] === "yes") disciplines.push("bouldering")
-  if (tags["climbing:toprope"] === "yes") disciplines.push("top-rope")
-  if (tags["climbing:lead"] === "yes") disciplines.push("lead")
-  if (tags["climbing:ice"] === "yes") disciplines.push("ice")
+  if (tags["climbing:sport"] === "yes") disciplines.push("Sport")
+  if (tags["climbing:trad"] === "yes") disciplines.push("Trad")
+  if (tags["climbing:boulder"] === "yes") disciplines.push("Bouldering")
+  if (tags["climbing:toprope"] === "yes" || tags["climbing:top_rope"] === "yes") disciplines.push("Top Rope")
+  if (tags["climbing:lead"] === "yes") disciplines.push("Lead")
+  if (tags["climbing:ice"] === "yes") disciplines.push("Ice") // Note: filter UI might not have ice yet, but good to collect
+  if (tags["climbing:auto_belay"] === "yes" || tags["climbing:autobelay"] === "yes") disciplines.push("Auto Belay")
   return disciplines
 }
 
