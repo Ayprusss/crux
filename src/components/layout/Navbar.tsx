@@ -1,8 +1,14 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { MountainIcon } from "@/components/ui/MountainIcon"
+import { Heart } from "lucide-react"
 
-export default function Navbar() {
+interface NavbarProps {
+  onToggleSaved?: () => void
+  showMapButton?: boolean
+}
+
+export default function Navbar({ onToggleSaved, showMapButton = true }: NavbarProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-8">
@@ -18,10 +24,18 @@ export default function Navbar() {
             How It Works
           </Link>
         </nav>
-        <div className="flex items-center gap-4">
-          <Link href="/map">
-            <Button className="rounded-xl font-bold shadow-md shadow-primary/10">Open Map</Button>
-          </Link>
+        <div className="flex items-center gap-2">
+          {onToggleSaved && (
+            <Button variant="ghost" className="gap-2 font-semibold text-muted-foreground hover:text-foreground" onClick={onToggleSaved}>
+              <Heart className="h-4 w-4" />
+              Saved
+            </Button>
+          )}
+          {showMapButton && (
+            <Link href="/map">
+              <Button className="rounded-xl font-bold shadow-md shadow-primary/10">Open Map</Button>
+            </Link>
+          )}
         </div>
       </div>
     </header>
