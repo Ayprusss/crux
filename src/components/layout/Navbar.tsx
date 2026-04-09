@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { MountainIcon } from "@/components/ui/MountainIcon"
 import { Heart } from "lucide-react"
+import { AuthButton } from "@/components/auth/AuthButton"
 
 interface NavbarProps {
   onToggleSaved?: () => void
@@ -24,7 +25,7 @@ export default function Navbar({ onToggleSaved, showMapButton = true }: NavbarPr
             How It Works
           </Link>
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {onToggleSaved && (
             <Button variant="ghost" className="gap-2 font-semibold text-muted-foreground hover:text-foreground" onClick={onToggleSaved}>
               <Heart className="h-4 w-4" />
@@ -33,9 +34,13 @@ export default function Navbar({ onToggleSaved, showMapButton = true }: NavbarPr
           )}
           {showMapButton && (
             <Link href="/map">
-              <Button className="rounded-xl font-bold shadow-md shadow-primary/10">Open Map</Button>
+              <Button className="rounded-xl font-bold border-primary text-primary" variant="outline" size="sm">Map</Button>
             </Link>
           )}
+          
+          <div className="w-px h-5 bg-border mx-1" />
+          
+          <AuthButton />
         </div>
       </div>
     </header>

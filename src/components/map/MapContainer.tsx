@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useCallback, useState } from "react"
+import { useRef, useCallback, useState, useEffect } from "react"
 import maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import Map, { Source, Layer, Popup, NavigationControl, GeolocateControl } from "react-map-gl/maplibre"
@@ -10,9 +10,12 @@ import { MAP_CONFIG } from "@/lib/map/config"
 import { getBoundsFromMap } from "@/lib/map/helpers"
 import { useMapViewport } from "@/hooks/useMapViewport"
 import { usePlaces } from "@/hooks/usePlaces"
+import { useFilters } from "@/hooks/useFilters"
+import { useFavorites } from "@/hooks/useFavorites"
 import MarkerPopup from "@/components/map/MarkerPopup"
 import DetailPanel from "@/components/places/DetailPanel"
 import SearchBar from "@/components/search/SearchBar"
+import FilterBar from "@/components/places/FilterBar"
 
 // Force maplibre-gl into the react-map-gl integration
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -84,18 +87,27 @@ function featureToPlace(properties: Record<string, unknown>, coords: number[]): 
   }
 }
 
-export default function MapContainer() {
+interface MapContainerProps {
+  jumpCoords?: { lat: number, lng: number } | null
+  isSavedOpen?: boolean
+}
+
+export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapContainerProps) {
   const mapRef = useRef<MapRef>(null)
   const { bounds, updateBounds } = useMapViewport()
-  const { places, loading, totalCached } = usePlaces(bounds)
+  const { filters, updateFilters, resetFilters, toggleDiscipline } = useFilters()
+  const { savedIds } = useFavorites()
+  const { places, loading, totalCached } = usePlaces(bounds, filters, savedIds)
 
   const [popupPlace, setPopupPlace] = useState<Place | null>(null)
   const [detailPlace, setDetailPlace] = useState<Place | null>(null)
+  const [isMapLoaded, setIsMapLoaded] = useState(false)
 
   const geojson = placesToGeoJSON(places)
 
   /** Handle map load — trigger initial data fetch */
   const onMapLoad = useCallback(() => {
+    setIsMapLoaded(true)
     const map = mapRef.current?.getMap()
     if (map) {
       updateBounds(getBoundsFromMap(map))
@@ -160,11 +172,35 @@ export default function MapContainer() {
     })
   }, [])
 
+  /** Effect to handle jumpCoords from parent */
+  useEffect(() => {
+    if (jumpCoords && mapRef.current && isMapLoaded) {
+      mapRef.current.flyTo({
+        center: [jumpCoords.lng, jumpCoords.lat],
+        zoom: 15,
+        duration: 1200,
+      })
+    }
+  }, [jumpCoords, isMapLoaded])
+
+  /** Effect to automatically filter Map when Saved places panel opens */
+  useEffect(() => {
+    updateFilters({ favoritesOnly: isSavedOpen })
+  }, [isSavedOpen, updateFilters])
+
   return (
     <div className="relative w-full h-full">
-      {/* Search bar overlay */}
-      <div className="absolute top-4 left-4 z-40">
-        <SearchBar onSelect={onSearchSelect} />
+      {/* Top Controls UI Layer (pointer-events-none so map is clickable through empty space) */}
+      <div className="absolute top-4 left-4 right-4 z-40 pointer-events-none flex flex-col gap-3 items-start">
+        <div className="pointer-events-auto">
+          <SearchBar onSelect={onSearchSelect} />
+        </div>
+        <FilterBar
+          filters={filters}
+          updateFilters={updateFilters}
+          toggleDiscipline={toggleDiscipline}
+          resetFilters={resetFilters}
+        />
       </div>
       <Map
         ref={mapRef}
@@ -188,15 +224,16 @@ export default function MapContainer() {
         <NavigationControl position="top-right" showCompass={false} />
         <GeolocateControl position="top-right" />
 
-        {/* Clustered places source */}
-        <Source
-          id="places"
-          type="geojson"
-          data={geojson}
-          cluster={true}
-          clusterMaxZoom={MAP_CONFIG.clusterMaxZoom}
-          clusterRadius={MAP_CONFIG.clusterRadius}
-        >
+        {/* Clustered places source - Only render when map is loaded */}
+        {isMapLoaded && (
+          <Source
+            id="places"
+            type="geojson"
+            data={geojson}
+            cluster={true}
+            clusterMaxZoom={MAP_CONFIG.clusterMaxZoom}
+            clusterRadius={MAP_CONFIG.clusterRadius}
+          >
           {/* Cluster circles */}
           <Layer
             id="clusters"
@@ -262,6 +299,7 @@ export default function MapContainer() {
             }}
           />
         </Source>
+        )}
 
         {/* Marker Popup */}
         {popupPlace && (
