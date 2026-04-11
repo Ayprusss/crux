@@ -1,15 +1,19 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createAdminClient } from "@/lib/supabase/server"
 import { ShieldAlert, Users, ShieldCheck, user, Check, X, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { nominateUser, approveEscalation, rejectEscalation } from "@/app/actions/admin"
+
+export const dynamic = "force-dynamic"
 
 export default async function AdminUsersPage() {
   const supabase = await createClient()
 
   const { data: { user: currentUser } } = await supabase.auth.getUser()
 
+  const adminClient = createAdminClient()
+
   // Fetch pending escalations
-  const { data: activeNominations } = await supabase
+  const { data: activeNominations } = await adminClient
     .from("role_escalations")
     .select(`
       *,
@@ -20,7 +24,7 @@ export default async function AdminUsersPage() {
     .order("created_at", { ascending: false })
 
   // Fetch all users
-  const { data: profiles } = await supabase
+  const { data: profiles } = await adminClient
     .from("profiles")
     .select("id, display_name, email, role, created_at")
     .order("created_at", { ascending: false })
@@ -67,7 +71,7 @@ export default async function AdminUsersPage() {
                           "use server"
                           await rejectEscalation(nom.id)
                         }}>
-                          <Button variant="ghost" className="text-red-700 hover:text-red-800 hover:bg-red-100 w-full sm:w-auto">
+                          <Button type="submit" variant="ghost" className="text-red-700 hover:text-red-800 hover:bg-red-100 w-full sm:w-auto">
                             <X className="w-4 h-4 mr-2" /> Reject
                           </Button>
                         </form>
@@ -75,7 +79,7 @@ export default async function AdminUsersPage() {
                           "use server"
                           await approveEscalation(nom.id)
                         }}>
-                          <Button className="bg-amber-600 hover:bg-amber-700 text-white w-full sm:w-auto">
+                          <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white w-full sm:w-auto">
                             <Check className="w-4 h-4 mr-2" /> Approve
                           </Button>
                         </form>
@@ -108,6 +112,7 @@ export default async function AdminUsersPage() {
               {profiles?.map((profile) => {
                 const isAdmin = profile.role === "admin"
                 const isModerator = profile.role === "moderator"
+                const hasPendingNomination = activeNominations?.some(nom => nom.target_user_id === profile.id)
 
                 return (
                   <tr key={profile.id} className="hover:bg-muted/30 transition-colors group">
@@ -131,15 +136,20 @@ export default async function AdminUsersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                       {!isAdmin && (
+                       {!isAdmin && !hasPendingNomination && (
                          <form action={async () => {
                            "use server"
                            await nominateUser(profile.id)
                          }}>
-                            <Button variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button type="submit" variant="outline" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
                               Nominate Admin
                             </Button>
                          </form>
+                       )}
+                       {!isAdmin && hasPendingNomination && (
+                          <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-full border border-amber-200">
+                            Pending Approval
+                          </span>
                        )}
                     </td>
                   </tr>
