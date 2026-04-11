@@ -10,7 +10,7 @@ import Link from "next/link"
 import { useAuth } from "@/components/auth/AuthProvider"
 
 interface SuggestionFormPanelProps {
-  mode: "add" | "edit"
+  mode: "add" | "edit" | "delete"
   place?: Place
   coordinates?: { lat: number; lng: number }
   onClose: () => void
@@ -135,7 +135,7 @@ export default function SuggestionFormPanel({
     if (!user) return
     
     // Validation
-    if (!name.trim()) {
+    if (mode !== "delete" && !name.trim()) {
       setError("Place name is required.")
       return
     }
@@ -155,7 +155,11 @@ export default function SuggestionFormPanel({
       }
 
       // Build proposed data payload
-      const proposedData: Record<string, any> = {
+      const proposedData: Record<string, any> = mode === "delete" ? {
+        // Reduced payload for deletion
+        name: place?.name || "Deleted Place",
+        isDelete: true,
+      } : {
         name: name.trim(),
         type,
         environment,
@@ -174,7 +178,7 @@ export default function SuggestionFormPanel({
       
       const payload: any = {
         user_id: user.id,
-        action: mode,
+        action: mode === "delete" ? "edit" : mode,
         data: proposedData,
       }
 
@@ -214,7 +218,7 @@ export default function SuggestionFormPanel({
       <div className="w-full max-w-[500px] max-h-[90vh] bg-background border rounded-2xl shadow-2xl flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b shrink-0">
         <h2 className="text-xl font-bold text-foreground">
-          {mode === "add" ? "Suggest a Place" : "Propose Edit"}
+          {mode === "add" ? "Suggest a Place" : mode === "delete" ? "Report Closed/Duplicate" : "Propose Edit"}
         </h2>
         <button
           onClick={onClose}
@@ -325,77 +329,91 @@ export default function SuggestionFormPanel({
               </div>
             )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Place Name</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full sm:text-sm border rounded-lg px-3 py-2 bg-background outline-none focus:ring-2 focus:ring-primary/50"
-                placeholder="e.g. Secret Crag"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Type</label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full sm:text-sm border rounded-lg px-3 py-2 bg-background outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  {PLACE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+            {mode === "delete" && (
+              <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 space-y-2 mb-4">
+                <p className="text-sm font-semibold">You are suggesting to remove {place?.name} from the map.</p>
+                <p className="text-xs">This will require moderator review. Please use the notes field below to explain why this place should be removed (e.g. permanently closed, duplicate entry).</p>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Environment</label>
-                <select
-                  value={environment}
-                  onChange={(e) => setEnvironment(e.target.value)}
-                  className="w-full sm:text-sm border rounded-lg px-3 py-2 bg-background outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  {ENVIRONMENTS.map(e => <option key={e} value={e}>{e}</option>)}
-                </select>
-              </div>
-            </div>
+            )}
+
+            {mode !== "delete" && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Place Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full sm:text-sm border rounded-lg px-3 py-2 bg-background outline-none focus:ring-2 focus:ring-primary/50"
+                    placeholder="e.g. Secret Crag"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Type</label>
+                    <select
+                      value={type}
+                      onChange={(e) => setType(e.target.value)}
+                      className="w-full sm:text-sm border rounded-lg px-3 py-2 bg-background outline-none focus:ring-2 focus:ring-primary/50"
+                    >
+                      {PLACE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">Environment</label>
+                    <select
+                      value={environment}
+                      onChange={(e) => setEnvironment(e.target.value)}
+                      className="w-full sm:text-sm border rounded-lg px-3 py-2 bg-background outline-none focus:ring-2 focus:ring-primary/50"
+                    >
+                      {ENVIRONMENTS.map(e => <option key={e} value={e}>{e}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Disciplines</label>
+                  <div className="flex flex-wrap gap-2">
+                    {DISCIPLINES.map((d) => (
+                      <button
+                        type="button"
+                        key={d}
+                        onClick={() => handleDisciplineToggle(d)}
+                        className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                          disciplines.includes(d) 
+                          ? "bg-primary text-primary-foreground shadow-sm" 
+                          : "bg-muted text-muted-foreground hover:bg-muted/80 border border-transparent hover:border-border"
+                        }`}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Description (optional)</label>
+                  <textarea
+                    rows={3}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full sm:text-sm border rounded-lg px-3 py-2 bg-background outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                    placeholder="Describe the area..."
+                  />
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Disciplines</label>
-              <div className="flex flex-wrap gap-2">
-                {DISCIPLINES.map((d) => (
-                  <button
-                    type="button"
-                    key={d}
-                    onClick={() => handleDisciplineToggle(d)}
-                    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                      disciplines.includes(d) 
-                      ? "bg-primary text-primary-foreground shadow-sm" 
-                      : "bg-muted text-muted-foreground hover:bg-muted/80 border border-transparent hover:border-border"
-                    }`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Description (optional)</label>
+              <label className="text-sm font-semibold">
+                {mode === "delete" ? "Reason for Removal (required)" : "Notes for Reviewer (optional)"}
+              </label>
               <textarea
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full sm:text-sm border rounded-lg px-3 py-2 bg-background outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-                placeholder="Describe the area..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Notes for Reviewer (optional)</label>
-              <textarea
-                rows={2}
+                rows={mode === "delete" ? 4 : 2}
                 value={notes}
+                required={mode === "delete"}
                 onChange={(e) => setNotes(e.target.value)}
                 className="w-full sm:text-sm border border-dashed rounded-lg px-3 py-2 bg-background outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                 placeholder="Sources, context, why this matters..."
@@ -452,7 +470,7 @@ export default function SuggestionFormPanel({
             {isSubmitting ? (
                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : null}
-            {mode === "add" ? "Submit Place" : "Submit Edit"}
+            {mode === "add" ? "Submit Place" : mode === "delete" ? "Submit Deletion" : "Submit Edit"}
           </Button>
         </div>
       )}
