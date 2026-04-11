@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server"
 import Link from "next/link"
-import { AlertCircle, ChevronRight, FileEdit, MapPinPlus } from "lucide-react"
+import { AlertCircle, ChevronRight, FileEdit, MapPinPlus, Trash2 } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -45,8 +45,9 @@ export default async function AdminSuggestionsQueue() {
           <ul className="divide-y">
             {suggestions.map((suggestion) => {
               const isAdd = suggestion.action === "add"
-              const Icon = isAdd ? MapPinPlus : FileEdit
               const suggestedData = suggestion.data as any
+              const isDelete = suggestedData?.isDelete === true
+              const Icon = isAdd ? MapPinPlus : isDelete ? Trash2 : FileEdit
               const profile = Array.isArray(suggestion.profiles) ? suggestion.profiles[0] : suggestion.profiles
               const submittedBy = profile?.display_name || profile?.email || "Unknown User"
 
@@ -54,14 +55,14 @@ export default async function AdminSuggestionsQueue() {
                 <li key={suggestion.id} className="group hover:bg-muted/30 transition-colors">
                   <Link href={`/admin/suggestions/${suggestion.id}`} className="flex items-center p-4 sm:p-6 gap-4">
                     
-                    <div className={`p-3 rounded-xl shrink-0 ${isAdd ? 'bg-indigo-50 text-indigo-600' : 'bg-fuchsia-50 text-fuchsia-600'}`}>
+                    <div className={`p-3 rounded-xl shrink-0 ${isAdd ? 'bg-indigo-50 text-indigo-600' : isDelete ? 'bg-red-50 text-red-600' : 'bg-fuchsia-50 text-fuchsia-600'}`}>
                       <Icon className="w-6 h-6" />
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${isAdd ? 'bg-indigo-100 text-indigo-700' : 'bg-fuchsia-100 text-fuchsia-700'}`}>
-                          {suggestion.action}
+                        <span className={`text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${isAdd ? 'bg-indigo-100 text-indigo-700' : isDelete ? 'bg-red-100 text-red-700' : 'bg-fuchsia-100 text-fuchsia-700'}`}>
+                          {isDelete ? "delete" : suggestion.action}
                         </span>
                         <span className="text-xs font-semibold text-muted-foreground truncate">
                           by {submittedBy}
