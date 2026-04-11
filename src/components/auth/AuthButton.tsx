@@ -1,42 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { signout } from "@/app/(auth)/actions"
-import type { User } from "@supabase/supabase-js"
+import { useAuth } from "./AuthProvider"
 
 export function AuthButton() {
-  const [user, setUser] = useState<User | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const supabase = createClient()
-
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      setUser(user)
-      if (user) {
-        const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-        setIsAdmin(data?.role === "admin" || data?.role === "moderator")
-      }
-      setLoading(false)
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const currentUser = session?.user || null
-      setUser(currentUser)
-      if (currentUser) {
-        const { data } = await supabase.from("profiles").select("role").eq("id", currentUser.id).single()
-        setIsAdmin(data?.role === "admin" || data?.role === "moderator")
-      } else {
-        setIsAdmin(false)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
+  const { user, isAdmin, loading } = useAuth()
 
   if (loading) {
     return <div className="h-9 w-20 animate-pulse bg-muted rounded-md" />
