@@ -69,6 +69,7 @@ export default async function AdminSuggestionReview({
   const proposedData = suggestion.data as any
   const profile = Array.isArray(suggestion.profiles) ? suggestion.profiles[0] : suggestion.profiles
   const isAdd = suggestion.action === "add"
+  const isDelete = proposedData?.isDelete === true
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24">
@@ -78,7 +79,7 @@ export default async function AdminSuggestionReview({
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black">{isAdd ? "New Submission" : "Edit Proposal"}</h1>
+          <h1 className="text-3xl font-black">{isAdd ? "New Submission" : isDelete ? "Deletion Request" : "Edit Proposal"}</h1>
           <p className="text-muted-foreground font-medium mt-1">Submitted by {profile?.display_name || profile?.email}</p>
         </div>
       </div>
@@ -139,29 +140,38 @@ export default async function AdminSuggestionReview({
         <div className="space-y-4">
           <h3 className="font-bold text-primary uppercase tracking-wider text-sm">Proposed Changes</h3>
           <div className="bg-background border-2 border-primary/20 shadow-xl shadow-primary/5 rounded-2xl p-6 min-h-[400px]">
-             <dl className="space-y-4">
-                <div>
-                  <dt className="text-xs font-semibold text-primary mb-1">Name</dt>
-                  <dd className="font-medium text-foreground bg-primary/5 px-2 py-0.5 rounded-md inline-block">{proposedData.name}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-semibold text-primary mb-1">Type & Environment</dt>
-                  <dd className="font-medium text-foreground bg-primary/5 px-2 py-0.5 rounded-md inline-block">{proposedData.type} · {proposedData.environment}</dd>
-                </div>
-                {isAdd && (
-                  <div>
-                    <dt className="text-xs font-semibold text-primary mb-1">Coordinates</dt>
-                    <dd className="font-medium text-foreground bg-primary/5 px-2 py-0.5 rounded-md inline-block font-mono text-sm">{proposedData.latitude}, {proposedData.longitude}</dd>
+              <dl className="space-y-4">
+                {isDelete ? (
+                  <div className="bg-red-50 text-red-800 p-4 rounded-xl border border-red-200">
+                    <p className="font-bold">Deletion Request</p>
+                    <p className="text-sm mt-1">Pending approval, this place will be permanently removed from the map.</p>
                   </div>
+                ) : (
+                  <>
+                    <div>
+                      <dt className="text-xs font-semibold text-primary mb-1">Name</dt>
+                      <dd className="font-medium text-foreground bg-primary/5 px-2 py-0.5 rounded-md inline-block">{proposedData.name}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold text-primary mb-1">Type & Environment</dt>
+                      <dd className="font-medium text-foreground bg-primary/5 px-2 py-0.5 rounded-md inline-block">{proposedData.type} · {proposedData.environment}</dd>
+                    </div>
+                    {isAdd && (
+                      <div>
+                        <dt className="text-xs font-semibold text-primary mb-1">Coordinates</dt>
+                        <dd className="font-medium text-foreground bg-primary/5 px-2 py-0.5 rounded-md inline-block font-mono text-sm">{proposedData.latitude}, {proposedData.longitude}</dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt className="text-xs font-semibold text-primary mb-1">Disciplines</dt>
+                      <dd className="font-medium text-foreground bg-primary/5 px-2 py-0.5 rounded-md inline-block text-sm">{proposedData.disciplines?.join(", ") || "None"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold text-primary mb-1">Description</dt>
+                      <dd className="font-medium text-foreground bg-primary/5 p-2 rounded-md text-sm max-w-sm whitespace-pre-wrap">{proposedData.description || "N/A"}</dd>
+                    </div>
+                  </>
                 )}
-                <div>
-                  <dt className="text-xs font-semibold text-primary mb-1">Disciplines</dt>
-                  <dd className="font-medium text-foreground bg-primary/5 px-2 py-0.5 rounded-md inline-block text-sm">{proposedData.disciplines?.join(", ") || "None"}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-semibold text-primary mb-1">Description</dt>
-                  <dd className="font-medium text-foreground bg-primary/5 p-2 rounded-md text-sm max-w-sm whitespace-pre-wrap">{proposedData.description || "N/A"}</dd>
-                </div>
 
                 {suggestion.notes && (
                   <div className="pt-4 mt-4 border-t">
