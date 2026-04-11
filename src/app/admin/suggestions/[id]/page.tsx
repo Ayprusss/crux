@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import { notFound, redirect } from "next/navigation"
 import { approveSuggestion, rejectSuggestion } from "@/app/actions/admin"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,7 @@ export default async function AdminSuggestionReview({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   // 1. Fetch
   const { data: suggestion, error } = await supabase
@@ -37,11 +37,20 @@ export default async function AdminSuggestionReview({
   } else if (suggestion.action === "add" && suggestion.data?.latitude && suggestion.data?.longitude) {
     // 3. PostGIS Duplicate Detection
     // We utilize ST_DWithin to mathematically check for points within roughly 100 meters
-    const { count } = await supabase.rpc("count_places_within_radius", {
+    let count = 0
+    const { data: rpcCount, error } = await supabase.rpc("count_places_within_radius", {
       lat: suggestion.data.latitude,
       lng: suggestion.data.longitude,
       radius_meters: 100
-    }).catch(console.error) // Gracefully ignore if RPC missing for now
+    })
+    
+    if (error) {
+      if (error.code !== 'PGRST202') {
+         console.error("RPC Error:", error)
+      }
+    } else if (typeof rpcCount === 'number') {
+      count = rpcCount
+    }
     
     // Fallback simple bounding box check if RPC fails
     const { data: possibleDups } = await supabase
