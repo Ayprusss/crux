@@ -1,7 +1,9 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createAdminClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
+import fs from "fs"
 import type { Place } from "@/types/place"
 
 export async function checkAdmin() {
@@ -30,18 +32,21 @@ export async function rejectSuggestion(suggestionId: string, reviewerNotes?: str
     reviewed_by: user.id,
     reviewed_at: new Date().toISOString()
   }
-  
+
   if (reviewerNotes) {
     payload.notes = reviewerNotes
   }
 
-  const { error } = await supabase
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
     .from("suggestions")
     .update(payload)
     .eq("id", suggestionId)
 
   if (error) throw error
-  revalidatePath("/admin/suggestions")
+  revalidatePath("/admin", "layout")
+  redirect("/admin/suggestions")
 }
 
 export async function approveSuggestion(suggestionId: string, reviewerNotes?: string) {
@@ -51,8 +56,10 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not logged in")
 
+  const adminClient = createAdminClient()
+
   // 1. Fetch the suggestion
-  const { data: suggestion, error: fetchError } = await supabase
+  const { data: suggestion, error: fetchError } = await adminClient
     .from("suggestions")
     .select("*")
     .eq("id", suggestionId)
@@ -66,7 +73,7 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
 
   // 2. Apply to DB
   if (suggestion.action === "add") {
-    const { data: newPlace, error: insertError } = await supabase
+    const { data: newPlace, error: insertError } = await adminClient
       .from("places")
       .insert({
         name: proposedData.name,
@@ -74,6 +81,7 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
         environment: proposedData.environment,
         latitude: proposedData.latitude,
         longitude: proposedData.longitude,
+        location: `SRID=4326;POINT(${proposedData.longitude} ${proposedData.latitude})`,
         description: proposedData.description,
         disciplines: proposedData.disciplines || [],
         amenities: proposedData.amenities || [],
@@ -87,17 +95,25 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
     if (insertError) throw insertError
     newPlaceId = newPlace.id
   } else if (suggestion.action === "edit" && suggestion.place_id) {
-    const { error: updateError } = await supabase
+    const updatePayload: any = {
+      name: proposedData.name,
+      type: proposedData.type,
+      environment: proposedData.environment,
+      description: proposedData.description,
+      disciplines: proposedData.disciplines || [],
+      amenities: proposedData.amenities || [],
+      verified: true // Marking verified since admin touched it
+    }
+
+    if (proposedData.latitude && proposedData.longitude) {
+      updatePayload.latitude = proposedData.latitude
+      updatePayload.longitude = proposedData.longitude
+      updatePayload.location = `SRID=4326;POINT(${proposedData.longitude} ${proposedData.latitude})`
+    }
+
+    const { error: updateError } = await adminClient
       .from("places")
-      .update({
-        name: proposedData.name,
-        type: proposedData.type,
-        environment: proposedData.environment,
-        description: proposedData.description,
-        disciplines: proposedData.disciplines || [],
-        amenities: proposedData.amenities || [],
-        verified: true // Marking verified since admin touched it
-      })
+      .update(updatePayload)
       .eq("id", suggestion.place_id)
 
     if (updateError) throw updateError
@@ -109,19 +125,32 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
     reviewed_by: user.id,
     reviewed_at: new Date().toISOString()
   }
-  
+
   if (reviewerNotes) payload.notes = reviewerNotes
   if (suggestion.action === "add") payload.place_id = newPlaceId // link new place
 
-  const { error: finalError } = await supabase
+  const { data: updatedSuggestion, error: finalError } = await adminClient
     .from("suggestions")
     .update(payload)
     .eq("id", suggestionId)
+    .select()
+
+  try {
+    fs.appendFileSync(
+      "update_log.txt", 
+      `\n[${new Date().toISOString()}] UPDATE attempt. Error: ${finalError?.message || 'none'}. Rows updated: ${updatedSuggestion?.length || 0}.\n`
+    );
+  } catch (e) {}
 
   if (finalError) throw finalError
+  
+  if (!updatedSuggestion || updatedSuggestion.length === 0) {
+    console.error("CRITICAL: Failed to update suggestion status. RLS policy might be blocking the UPDATE for admin users.")
+  }
 
-  revalidatePath("/admin/suggestions")
+  revalidatePath("/admin", "layout")
   revalidatePath("/map")
+  redirect("/admin/suggestions")
 }
 
 // ==========================================
@@ -155,7 +184,9 @@ export async function nominateUser(targetId: string) {
 
   if (existing) throw new Error("An active nomination already exists for this user")
 
-  const { error } = await supabase
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
     .from("role_escalations")
     .insert({
       target_user_id: targetId,
@@ -163,8 +194,12 @@ export async function nominateUser(targetId: string) {
       nominated_by: user.id
     })
 
+  try {
+    fs.appendFileSync("update_log.txt", `\n[NOMINATE ERROR TEST] ${error ? JSON.stringify(error) : 'success'}\n`);
+  } catch(e) {}
+
   if (error) throw error
-  revalidatePath("/admin/users")
+  revalidatePath("/admin", "layout")
 }
 
 export async function approveEscalation(escalationId: string) {
@@ -183,25 +218,26 @@ export async function approveEscalation(escalationId: string) {
 
   if (escErr || !escalation) throw new Error("Nomination not found")
   if (escalation.status !== "pending") throw new Error("Nomination already processed")
-  
+
   // Dual approval math
   if (escalation.nominated_by === user.id) {
     throw new Error("You cannot approve your own nomination.")
   }
 
+  const adminClient = createAdminClient()
+
   // Update profile
-  const { error: upgradeErr } = await supabase
+  const { error: upgradeErr } = await adminClient
     .from("profiles")
-    .update({ 
-      role: escalation.requested_role,
-      is_admin: escalation.requested_role === "admin" 
+    .update({
+      role: escalation.requested_role
     })
     .eq("id", escalation.target_user_id)
 
   if (upgradeErr) throw upgradeErr
 
   // Close escalation
-  const { error: closeErr } = await supabase
+  const { error: closeErr } = await adminClient
     .from("role_escalations")
     .update({
       status: "approved",
@@ -210,8 +246,8 @@ export async function approveEscalation(escalationId: string) {
     .eq("id", escalationId)
 
   if (closeErr) throw closeErr
-  
-  revalidatePath("/admin/users")
+
+  revalidatePath("/admin", "layout")
 }
 
 export async function rejectEscalation(escalationId: string) {
@@ -221,7 +257,9 @@ export async function rejectEscalation(escalationId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not logged in")
 
-  const { error } = await supabase
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
     .from("role_escalations")
     .update({ status: "rejected" })
     .eq("id", escalationId)
@@ -229,5 +267,5 @@ export async function rejectEscalation(escalationId: string) {
 
   if (error) throw error
 
-  revalidatePath("/admin/users")
+  revalidatePath("/admin", "layout")
 }
