@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { Inbox, CheckCircle, Database } from "lucide-react"
 import Link from "next/link"
+import DashboardTelemetry from "@/components/admin/DashboardTelemetry"
+
+export const dynamic = "force-dynamic"
 
 export default async function AdminDashboardOverview() {
   const supabase = await createClient()
@@ -22,6 +25,26 @@ export default async function AdminDashboardOverview() {
     .from("places")
     .select("id", { count: "exact", head: true })
     .eq("verified", true)
+
+  // Fetch lightweight telemetry payload handling Supabase 1000 row limits natively
+  let telemetryData: any[] = []
+  let hasMore = true
+  let page = 0
+  
+  while (hasMore && page < 20) { // Limit to 20k places as a safety ceiling
+    const { data } = await supabase
+      .from("places")
+      .select("source, type, environment")
+      .range(page * 1000, (page + 1) * 1000 - 1)
+      
+    if (!data || data.length === 0) {
+      hasMore = false
+    } else {
+      telemetryData = telemetryData.concat(data)
+      if (data.length < 1000) hasMore = false
+    }
+    page++
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -74,9 +97,15 @@ export default async function AdminDashboardOverview() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-        <div className="bg-background border rounded-2xl p-6 shadow-sm">
-          <h3 className="font-bold text-lg mb-2">Quick Actions</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
+        {/* Telemetry Chart uses 2 columns out of 3 */}
+        <div className="lg:col-span-2">
+           <DashboardTelemetry data={telemetryData || []} />
+        </div>
+
+        {/* Quick Actions uses 1 column */}
+        <div className="bg-background border rounded-2xl p-6 shadow-sm h-full max-h-min">
+          <h3 className="font-bold text-lg mb-4">Quick Actions</h3>
           <div className="flex flex-col gap-3">
             <Link 
               href="/admin/suggestions"
