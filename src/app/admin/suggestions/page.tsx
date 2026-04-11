@@ -1,9 +1,11 @@
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { AlertCircle, ChevronRight, FileEdit, MapPinPlus } from "lucide-react"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminSuggestionsQueue() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   // Fetch pending suggestions and neatly join with profiles for the submitter's name
   const { data: suggestions, error } = await supabase
