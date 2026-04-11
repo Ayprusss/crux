@@ -10,9 +10,10 @@ interface DetailPanelProps {
   place: Place
   onClose: () => void
   onEdit?: () => void
+  onDelete?: () => void
 }
 
-export default function DetailPanel({ place, onClose, onEdit }: DetailPanelProps) {
+export default function DetailPanel({ place, onClose, onEdit, onDelete }: DetailPanelProps) {
   const { toggleFavorite, isFavorite, isLoaded } = useFavorites()
   const [copied, setCopied] = useState(false)
 
@@ -186,6 +187,16 @@ export default function DetailPanel({ place, onClose, onEdit }: DetailPanelProps
             onClick={onEdit}
           >
             Wrong info? Suggest an edit
+          </Button>
+        )}
+        
+        {onDelete && (
+          <Button 
+            variant="ghost" 
+            className="w-full rounded-xl h-9 mt-1 text-xs font-semibold text-red-500/70 hover:text-red-500 hover:bg-red-50"
+            onClick={onDelete}
+          >
+            Report place as closed or duplicate
           </Button>
         )}
       </div>
