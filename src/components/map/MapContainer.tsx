@@ -116,7 +116,7 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
   }, [])
 
   const [isPickingLocation, setIsPickingLocation] = useState(false)
-  const [suggestionMode, setSuggestionMode] = useState<"add" | "edit" | null>(null)
+  const [suggestionMode, setSuggestionMode] = useState<"add" | "edit" | "delete" | null>(null)
   const [suggestionCoords, setSuggestionCoords] = useState<{ lat: number; lng: number } | undefined>()
 
   const [cursor, setCursor] = useState("grab")
@@ -405,6 +405,7 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
           place={detailPlace}
           onClose={() => setDetailPlace(null)}
           onEdit={() => setSuggestionMode("edit")}
+          onDelete={() => setSuggestionMode("delete")}
         />
       )}
 
@@ -412,7 +413,7 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
       {suggestionMode && (
         <SuggestionFormPanel
           mode={suggestionMode}
-          place={suggestionMode === "edit" && detailPlace ? detailPlace : undefined}
+          place={(suggestionMode === "edit" || suggestionMode === "delete") && detailPlace ? detailPlace : undefined}
           coordinates={suggestionCoords}
           onClose={() => setSuggestionMode(null)}
           onSuccess={() => setSuggestionMode(null)}
