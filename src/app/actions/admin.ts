@@ -95,28 +95,37 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
     if (insertError) throw insertError
     newPlaceId = newPlace.id
   } else if (suggestion.action === "edit" && suggestion.place_id) {
-    const updatePayload: any = {
-      name: proposedData.name,
-      type: proposedData.type,
-      environment: proposedData.environment,
-      description: proposedData.description,
-      disciplines: proposedData.disciplines || [],
-      amenities: proposedData.amenities || [],
-      verified: true // Marking verified since admin touched it
+    if ((proposedData as any).isDelete) {
+      const { error: deleteError } = await adminClient
+        .from("places")
+        .delete()
+        .eq("id", suggestion.place_id)
+
+      if (deleteError) throw deleteError
+    } else {
+      const updatePayload: any = {
+        name: proposedData.name,
+        type: proposedData.type,
+        environment: proposedData.environment,
+        description: proposedData.description,
+        disciplines: proposedData.disciplines || [],
+        amenities: proposedData.amenities || [],
+        verified: true // Marking verified since admin touched it
+      }
+
+      if (proposedData.latitude && proposedData.longitude) {
+        updatePayload.latitude = proposedData.latitude
+        updatePayload.longitude = proposedData.longitude
+        updatePayload.location = `SRID=4326;POINT(${proposedData.longitude} ${proposedData.latitude})`
+      }
+
+      const { error: updateError } = await adminClient
+        .from("places")
+        .update(updatePayload)
+        .eq("id", suggestion.place_id)
+
+      if (updateError) throw updateError
     }
-
-    if (proposedData.latitude && proposedData.longitude) {
-      updatePayload.latitude = proposedData.latitude
-      updatePayload.longitude = proposedData.longitude
-      updatePayload.location = `SRID=4326;POINT(${proposedData.longitude} ${proposedData.latitude})`
-    }
-
-    const { error: updateError } = await adminClient
-      .from("places")
-      .update(updatePayload)
-      .eq("id", suggestion.place_id)
-
-    if (updateError) throw updateError
   }
 
   // 3. Mark suggestion approved
