@@ -245,8 +245,11 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
             onClick={() => {
               if (isPickingLocation) {
                 setIsPickingLocation(false)
+                // Bring the panel back if they canceled picking
+                setSuggestionMode("add")
               } else {
-                setIsPickingLocation(true)
+                setSuggestionCoords(undefined)
+                setSuggestionMode("add")
                 setPopupPlace(null)
                 setDetailPlace(null)
               }
@@ -254,7 +257,7 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
           >
             {isPickingLocation ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             <span className="hidden sm:inline font-semibold">
-              {isPickingLocation ? "Cancel" : "Suggest Place"}
+              {isPickingLocation ? "Cancel Map Pick" : "Suggest Place"}
             </span>
           </Button>
         </div>
@@ -413,6 +416,10 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
           coordinates={suggestionCoords}
           onClose={() => setSuggestionMode(null)}
           onSuccess={() => setSuggestionMode(null)}
+          onRequestMapPick={() => {
+             setSuggestionMode(null)
+             setIsPickingLocation(true)
+          }}
         />
       )}
     </div>
