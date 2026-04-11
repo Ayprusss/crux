@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 
 /**
  * Server-side Supabase client.
@@ -28,6 +29,30 @@ export async function createClient() {
           }
         },
       },
+    }
+  )
+}
+
+/**
+ * Service Role Supabase Client.
+ * Bypasses RLS to forcefully perform database updates.
+ * Requires SUPABASE_SERVICE_ROLE_KEY in `.env.local`.
+ */
+export function createAdminClient() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!serviceKey) {
+    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY in .env.local")
+  }
+
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
     }
   )
 }
