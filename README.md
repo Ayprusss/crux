@@ -15,6 +15,7 @@ The primary objective of Crux is to resolve the fragmentation in modern climbing
 * **Dual-Approval Administration:** A strictly-enforced admin dashboard for quality control. It leverages a side-by-side visual diff tool to verify community edits, and requires two separate Admins to approve the promotion of any new staff members.
 * **PostGIS Duplicate Detection:** Running natively on the server layer, any new map submission automatically scans a ~100-meter geographic radius, flashing warnings to moderators if a duplicate submission is detected.
 * **Authentication & Saved Spots:** Full Supabase Auth integration permitting users to securely 'heart' multiple locations and quickly recall them via a sliding UI panel.
+* **Dynamic Confidence Scoring:** A lightweight, front-end algorithm that computes a location's trustworthiness (from 40% to 100%) based entirely on its origin (`osm`, `user`, or `curated`) and Admin Verification status, avoiding heavy database aggregations.
 
 ---
 
