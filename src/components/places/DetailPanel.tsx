@@ -7,6 +7,7 @@ import { useFavorites } from "@/hooks/useFavorites"
 import { useState, useTransition } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { verifyPlace } from "@/app/actions/admin"
+import ConditionFeed from "@/components/places/ConditionFeed"
 
 function getConfidenceScore(place: Place) {
   if (place.verified) return 100;
@@ -229,6 +230,11 @@ export default function DetailPanel({ place, onClose, onEdit, onDelete, onCurate
               )}
             </div>
           </div>
+        )}
+
+        {/* Condition Reports (Outdoor Only) */}
+        {place.environment === "outdoor" && (
+          <ConditionFeed placeId={place.id} />
         )}
 
         {/* Source info and Confidence Score */}
