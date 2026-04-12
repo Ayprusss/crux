@@ -13,6 +13,8 @@ export interface Place {
   disciplines: string[]
   amenities: string[]
   description: string | null
+  operating_hours?: Record<string, string> | null
+  photos?: string[] | null
   osm_id: number | null
   submitted_by: string | null
   source: "osm" | "user" | "curated"
