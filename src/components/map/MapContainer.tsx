@@ -17,6 +17,7 @@ import DetailPanel from "@/components/places/DetailPanel"
 import SearchBar from "@/components/search/SearchBar"
 import FilterBar from "@/components/places/FilterBar"
 import SuggestionFormPanel from "@/components/places/SuggestionFormPanel"
+import CurationFormPanel from "@/components/admin/CurationFormPanel"
 import { Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -50,6 +51,8 @@ function placesToGeoJSON(places: Place[]): GeoJSON.FeatureCollection {
         longitude: place.longitude,
         disciplines: JSON.stringify(place.disciplines),
         amenities: JSON.stringify(place.amenities),
+        operating_hours: place.operating_hours ? JSON.stringify(place.operating_hours) : null,
+        photos: place.photos ? JSON.stringify(place.photos) : null,
         description: place.description,
         source: place.source,
         verified: place.verified,
@@ -80,6 +83,8 @@ function featureToPlace(properties: Record<string, unknown>): Place {
     country: (properties.country as string) || "CA",
     disciplines: JSON.parse((properties.disciplines as string) || "[]"),
     amenities: JSON.parse((properties.amenities as string) || "[]"),
+    operating_hours: properties.operating_hours ? JSON.parse(properties.operating_hours as string) : null,
+    photos: properties.photos ? JSON.parse(properties.photos as string) : null,
     description: (properties.description as string) || null,
     osm_id: (properties.osm_id as number) || null,
     submitted_by: (properties.submitted_by as string) || null,
@@ -117,6 +122,7 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
 
   const [isPickingLocation, setIsPickingLocation] = useState(false)
   const [suggestionMode, setSuggestionMode] = useState<"add" | "edit" | "delete" | null>(null)
+  const [curationMode, setCurationMode] = useState(false)
   const [suggestionCoords, setSuggestionCoords] = useState<{ lat: number; lng: number } | undefined>()
 
   const [cursor, setCursor] = useState("grab")
@@ -250,6 +256,7 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
               } else {
                 setSuggestionCoords(undefined)
                 setSuggestionMode("add")
+                setCurationMode(false)
                 setPopupPlace(null)
                 setDetailPlace(null)
               }
@@ -263,6 +270,7 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
         </div>
       </div>
       <Map
+        reuseMaps
         ref={mapRef}
         mapLib={maplibregl}
         mapStyle={MAP_CONFIG.style}
@@ -400,12 +408,21 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
       )}
 
       {/* Detail Panel (slides in from right) */}
-      {detailPlace && (
+      {detailPlace && !curationMode && (
         <DetailPanel
           place={detailPlace}
           onClose={() => setDetailPlace(null)}
           onEdit={() => setSuggestionMode("edit")}
           onDelete={() => setSuggestionMode("delete")}
+          onCurate={() => setCurationMode(true)}
+        />
+      )}
+
+      {/* Curation Form Panel */}
+      {curationMode && detailPlace && (
+        <CurationFormPanel
+          place={detailPlace}
+          onClose={() => setCurationMode(false)}
         />
       )}
 
