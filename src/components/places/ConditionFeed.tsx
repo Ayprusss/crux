@@ -7,7 +7,7 @@ import type { ConditionStatus, CrowdLevel, ConditionReport } from "@/types/condi
 import { CloudRain, CloudSun, Users, Loader2, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export default function ConditionFeed({ placeId }: { placeId: string }) {
+export default function ConditionFeed({ placeId, forceShowForm }: { placeId: string, forceShowForm?: boolean }) {
   const { user } = useAuth()
   
   const [conditions, setConditions] = useState<ConditionReport[]>([])
@@ -17,6 +17,16 @@ export default function ConditionFeed({ placeId }: { placeId: string }) {
 
   // Form State
   const [showForm, setShowForm] = useState(false)
+
+  // Sync external trigger
+  useEffect(() => {
+    if (forceShowForm) {
+      setShowForm(true)
+      // Scroll to feed
+      const el = document.getElementById("condition-feed")
+      el?.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [forceShowForm])
   const [status, setStatus] = useState<ConditionStatus | null>(null)
   const [crowdLevel, setCrowdLevel] = useState<CrowdLevel | null>(null)
   const [notes, setNotes] = useState("")
@@ -81,7 +91,7 @@ export default function ConditionFeed({ placeId }: { placeId: string }) {
   }
 
   return (
-    <div className="pt-4 border-t space-y-4">
+    <div id="condition-feed" className="pt-4 border-t space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-bold text-sm text-foreground">Condition Reports</h3>
