@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { Search, X, MapPin, Loader2 } from "lucide-react"
+import { Search, X, MapPin, Loader2, Mountain, Activity, Map as MapIcon } from "lucide-react"
+import { searchClimbingPlaces } from "@/app/actions/search"
+import type { Place } from "@/types/place"
 
 interface NominatimResult {
   place_id: number
@@ -11,13 +13,24 @@ interface NominatimResult {
   type: string
 }
 
+interface UnifiedResult {
+  id: string
+  name: string
+  secondary?: string
+  lat: number
+  lng: number
+  type: "place" | "address"
+  category?: string // gym, crag, etc
+  placeData?: Place
+}
+
 interface SearchBarProps {
-  onSelect: (lat: number, lng: number, name: string) => void
+  onSelect: (lat: number, lng: number, name: string, place?: Place) => void
 }
 
 export default function SearchBar({ onSelect }: SearchBarProps) {
   const [query, setQuery] = useState("")
-  const [results, setResults] = useState<NominatimResult[]>([])
+  const [results, setResults] = useState<UnifiedResult[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -25,8 +38,7 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  /** Geocode the query via Nominatim */
-  const geocode = useCallback(async (q: string) => {
+  const hybridSearch = useCallback(async (q: string) => {
     if (q.length < 3) {
       setResults([])
       setIsOpen(false)
@@ -36,48 +48,73 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
     setLoading(true)
 
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&countrycodes=ca,us`,
-        {
-          headers: { "User-Agent": "CruxClimbingMap/1.0" },
-        }
-      )
-      const data: NominatimResult[] = await res.json()
-      setResults(data)
-      setIsOpen(data.length > 0)
+      // Parallelize local DB search and global Nominatim geocoding
+      const [localData, nominatimResponse] = await Promise.all([
+        searchClimbingPlaces(q),
+        fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&countrycodes=ca,us`,
+          { headers: { "User-Agent": "CruxClimbingMap/1.0" } }
+        ).then(res => res.json())
+      ])
+
+      const unified: UnifiedResult[] = [];
+
+      // 1. Process Local Climbing Places (High Priority)
+      if (Array.isArray(localData)) {
+        localData.forEach(place => {
+          unified.push({
+            id: place.id,
+            name: place.name,
+            secondary: `${place.city || ''}${place.region ? `, ${place.region}` : ''}`,
+            lat: place.latitude,
+            lng: place.longitude,
+            type: "place",
+            category: place.type,
+            placeData: place
+          })
+        })
+      }
+
+      // 2. Process Nominatim Results (Avoid duplicates where possible)
+      if (Array.isArray(nominatimResponse)) {
+        nominatimResponse.forEach(res => {
+          const parts = res.display_name.split(",")
+          unified.push({
+            id: `osm-${res.place_id}`,
+            name: parts.slice(0, 2).join(",").trim(),
+            secondary: parts.slice(2, 4).join(",").trim(),
+            lat: parseFloat(res.lat),
+            lng: parseFloat(res.lon),
+            type: "address"
+          })
+        })
+      }
+
+      setResults(unified)
+      setIsOpen(unified.length > 0)
     } catch (err) {
-      console.error("Geocoding failed:", err)
+      console.error("Search failed:", err)
       setResults([])
     } finally {
       setLoading(false)
     }
   }, [])
 
-  /** Debounced input handler */
   const onInputChange = (value: string) => {
     setQuery(value)
-
     if (debounceRef.current) clearTimeout(debounceRef.current)
-
     debounceRef.current = setTimeout(() => {
-      geocode(value)
+      hybridSearch(value)
     }, 350)
   }
 
-  /** Handle result selection */
-  const handleSelect = (result: NominatimResult) => {
-    const lat = parseFloat(result.lat)
-    const lng = parseFloat(result.lon)
-
-    // Use a short display name (first two parts)
-    const shortName = result.display_name.split(",").slice(0, 2).join(",").trim()
-    setQuery(shortName)
+  const handleSelect = (result: UnifiedResult) => {
+    setQuery(result.name)
     setIsOpen(false)
     setResults([])
-    onSelect(lat, lng, shortName)
+    onSelect(result.lat, result.lng, result.name, result.placeData)
   }
 
-  /** Clear input */
   const handleClear = () => {
     setQuery("")
     setResults([])
@@ -85,7 +122,6 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
     inputRef.current?.focus()
   }
 
-  /** Close dropdown on outside click */
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -97,7 +133,6 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  /** Cleanup debounce on unmount */
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -106,7 +141,6 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
 
   return (
     <div ref={containerRef} className="relative w-full max-w-sm z-50">
-      {/* Input */}
       <div
         className={`flex items-center gap-2 bg-background border rounded-xl px-3 h-10 shadow-sm transition-all duration-200 ${
           focused ? "ring-2 ring-primary/30 border-primary/50 shadow-md" : "hover:border-foreground/20"
@@ -122,7 +156,7 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
             setFocused(true)
             if (results.length > 0) setIsOpen(true)
           }}
-          placeholder="Search locations…"
+          placeholder="Gyms, crags, or cities…"
           className="flex-1 bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none"
         />
         {loading && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin shrink-0" />}
@@ -133,32 +167,43 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
         )}
       </div>
 
-      {/* Dropdown results */}
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 bg-background border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-          {results.map((result) => {
-            const parts = result.display_name.split(",")
-            const primary = parts.slice(0, 2).join(",").trim()
-            const secondary = parts.slice(2, 4).join(",").trim()
-
-            return (
-              <button
-                key={result.place_id}
-                onClick={() => handleSelect(result)}
-                className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-muted/60 transition-colors group"
-              >
-                <MapPin className="h-4 w-4 text-primary mt-0.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{primary}</p>
-                  {secondary && (
-                    <p className="text-xs text-muted-foreground truncate">{secondary}</p>
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-background border rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 py-1">
+          {results.map((result) => (
+            <button
+              key={result.id}
+              onClick={() => handleSelect(result)}
+              className="w-full flex items-start gap-3 px-3 py-2.5 text-left hover:bg-muted/60 transition-colors group"
+            >
+              <div className="mt-0.5 shrink-0">
+                {result.type === "place" ? (
+                  result.category === "gym" ? (
+                    <Activity className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Mountain className="h-4 w-4 text-primary" />
+                  )
+                ) : (
+                  <MapPin className="h-4 w-4 text-muted-foreground opacity-60 group-hover:opacity-100" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-foreground truncate">{result.name}</p>
+                  {result.type === "place" && (
+                    <span className="text-[10px] font-black uppercase tracking-tighter bg-primary/10 text-primary px-1.5 py-0.5 rounded leading-none">
+                      Climbing
+                    </span>
                   )}
                 </div>
-              </button>
-            )
-          })}
+                {result.secondary && (
+                  <p className="text-xs text-muted-foreground truncate font-medium">{result.secondary}</p>
+                )}
+              </div>
+            </button>
+          ))}
         </div>
       )}
     </div>
   )
 }
+
