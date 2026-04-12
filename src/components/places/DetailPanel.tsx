@@ -1,6 +1,6 @@
 "use client"
 
-import { X, MapPin, Navigation, Clock, Tag, Heart, Share2, Info, ShieldCheck, Activity } from "lucide-react"
+import { X, MapPin, Navigation, Clock, Tag, Heart, Share2, Info, ShieldCheck, Activity, CloudSun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { Place } from "@/types/place"
 import { useFavorites } from "@/hooks/useFavorites"
@@ -8,6 +8,8 @@ import { useState, useTransition } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { verifyPlace } from "@/app/actions/admin"
 import ConditionFeed from "@/components/places/ConditionFeed"
+
+const SHOW_INDOOR_CONDITIONS = false; // Future release toggle
 
 function getConfidenceScore(place: Place) {
   if (place.verified) return 100;
@@ -28,25 +30,23 @@ interface DetailPanelProps {
   onEdit?: () => void
   onDelete?: () => void
   onCurate?: () => void
+  onVerify?: () => void
 }
 
-export default function DetailPanel({ place, onClose, onEdit, onDelete, onCurate }: DetailPanelProps) {
+export default function DetailPanel({ place, onClose, onEdit, onDelete, onCurate, onVerify }: DetailPanelProps) {
   const { toggleFavorite, isFavorite, isLoaded } = useFavorites()
-  const { isAdmin } = useAuth()
+  const { user, isAdmin } = useAuth()
   const [copied, setCopied] = useState(false)
+  const [isReportingCondition, setIsReportingCondition] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const confidenceScore = getConfidenceScore(place)
   const scoreColor = getConfidenceColor(confidenceScore)
 
   const handleVerify = () => {
-    startTransition(async () => {
-      try {
-        await verifyPlace(place.id)
-      } catch (e) {
-        console.error("Failed to verify", e)
-      }
-    })
+    if (onVerify) {
+      onVerify()
+    }
   }
 
   const handleShare = () => {
@@ -233,8 +233,8 @@ export default function DetailPanel({ place, onClose, onEdit, onDelete, onCurate
         )}
 
         {/* Condition Reports (Outdoor Only) */}
-        {place.environment === "outdoor" && (
-          <ConditionFeed placeId={place.id} />
+        {(place.environment === "outdoor" || SHOW_INDOOR_CONDITIONS) && (
+          <ConditionFeed placeId={place.id} forceShowForm={isReportingCondition} />
         )}
 
         {/* Source info and Confidence Score */}
@@ -282,24 +282,14 @@ export default function DetailPanel({ place, onClose, onEdit, onDelete, onCurate
           </Button>
         </div>
         
-        {isAdmin && !place.verified && (
-          <Button 
-            className="w-full rounded-xl font-bold bg-green-600 hover:bg-green-700 text-white h-11"
-            onClick={handleVerify}
-            disabled={isPending}
-          >
-            <ShieldCheck className="mr-2 h-4 w-4" />
-            {isPending ? "Verifying..." : "Admin: Verify Place"}
-          </Button>
-        )}
-        
-        {isAdmin && onCurate && (
+        {(user && (place.environment === "outdoor" || SHOW_INDOOR_CONDITIONS)) && (
           <Button 
             variant="outline"
-            className="w-full rounded-xl font-bold border-primary text-primary hover:bg-primary/5 h-11 border-2"
-            onClick={onCurate}
+            className="w-full rounded-xl h-9 mt-1 text-xs font-bold text-muted-foreground hover:text-foreground border-dashed"
+            onClick={() => setIsReportingCondition(true)}
           >
-            Admin: Curate Place
+            <CloudSun className="mr-2 h-4 w-4" />
+            Report Weather & Crowds
           </Button>
         )}
         
