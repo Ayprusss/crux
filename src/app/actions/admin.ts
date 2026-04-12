@@ -278,3 +278,53 @@ export async function rejectEscalation(escalationId: string) {
 
   revalidatePath("/admin", "layout")
 }
+
+// ==========================================
+// PLACE VERIFICATION
+// ==========================================
+
+export async function verifyPlace(placeId: string) {
+  if (!(await checkAdmin())) throw new Error("Unauthorized")
+
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
+    .from("places")
+    .update({ verified: true })
+    .eq("id", placeId)
+
+  if (error) throw error
+
+  revalidatePath("/map", "page")
+  revalidatePath("/admin", "layout")
+}
+
+// ==========================================
+// PLACE CURATION
+// ==========================================
+
+export interface CurationPayload {
+  operating_hours?: Record<string, string> | null
+  photos?: string[] | null
+  amenities?: string[]
+}
+
+export async function curatePlace(placeId: string, payload: CurationPayload) {
+  if (!(await checkAdmin())) throw new Error("Unauthorized")
+
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
+    .from("places")
+    .update({ 
+      ...payload,
+      source: "curated",
+      verified: true // Usually if we curate it, it's also verified
+    })
+    .eq("id", placeId)
+
+  if (error) throw error
+
+  revalidatePath("/map")
+  revalidatePath("/admin", "layout")
+}
