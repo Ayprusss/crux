@@ -21,6 +21,20 @@ export async function checkAdmin() {
   return data?.role === "admin" || data?.role === "moderator"
 }
 
+export async function checkSuperAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+
+  return data?.role === "admin"
+}
+
 export async function rejectSuggestion(suggestionId: string, reviewerNotes?: string) {
   if (!(await checkAdmin())) throw new Error("Unauthorized")
 
@@ -170,7 +184,7 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
 // ==========================================
 
 export async function nominateUser(targetId: string) {
-  if (!(await checkAdmin())) throw new Error("Unauthorized")
+  if (!(await checkSuperAdmin())) throw new Error("Unauthorized")
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -215,7 +229,7 @@ export async function nominateUser(targetId: string) {
 }
 
 export async function approveEscalation(escalationId: string) {
-  if (!(await checkAdmin())) throw new Error("Unauthorized")
+  if (!(await checkSuperAdmin())) throw new Error("Unauthorized")
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -263,7 +277,7 @@ export async function approveEscalation(escalationId: string) {
 }
 
 export async function rejectEscalation(escalationId: string) {
-  if (!(await checkAdmin())) throw new Error("Unauthorized")
+  if (!(await checkSuperAdmin())) throw new Error("Unauthorized")
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

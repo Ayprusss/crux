@@ -1,0 +1,4 @@
+## 2024-04-13 - [Fix Privilege Escalation in Role Management]
+**Vulnerability:** A Privilege Escalation vulnerability existed where moderators could potentially nominate and approve themselves as admins. The server actions for role management (`nominateUser`, `approveEscalation`, `rejectEscalation`) were guarded only by `checkAdmin()`, which incorrectly permitted both admins and moderators.
+**Learning:** It's crucial to strictly separate moderation capabilities (e.g., handling suggestions) from administration capabilities (e.g., managing user roles) when implementing role-based access control. Relying on a shared `checkAdmin()` function for both contexts was unsafe.
+**Prevention:** Introduce a stricter validation function like `checkSuperAdmin()` to explicitly verify the 'admin' role, and apply it to all role-escalation server actions and UI elements to prevent unauthorized access.
