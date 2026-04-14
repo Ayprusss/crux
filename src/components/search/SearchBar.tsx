@@ -24,12 +24,19 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cacheRef = useRef<Record<string, NominatimResult[]>>({})
 
   /** Geocode the query via Nominatim */
   const geocode = useCallback(async (q: string) => {
     if (q.length < 3) {
       setResults([])
       setIsOpen(false)
+      return
+    }
+
+    if (cacheRef.current[q]) {
+      setResults(cacheRef.current[q])
+      setIsOpen(cacheRef.current[q].length > 0)
       return
     }
 
@@ -43,6 +50,7 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
         }
       )
       const data: NominatimResult[] = await res.json()
+      cacheRef.current[q] = data
       setResults(data)
       setIsOpen(data.length > 0)
     } catch (err) {
