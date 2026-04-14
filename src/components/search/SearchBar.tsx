@@ -37,6 +37,7 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cacheRef = useRef<Record<string, NominatimResult[]>>({})
 
   const hybridSearch = useCallback(async (q: string) => {
     if (q.length < 3) {
@@ -45,9 +46,26 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
       return
     }
 
+    if (cacheRef.current[q]) {
+      setResults(cacheRef.current[q])
+      setIsOpen(cacheRef.current[q].length > 0)
+      return
+    }
+
     setLoading(true)
 
     try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&countrycodes=ca,us`,
+        {
+          headers: { "User-Agent": "CruxClimbingMap/1.0" },
+        }
+      )
+      const data: NominatimResult[] = await res.json()
+      cacheRef.current[q] = data
+      setResults(data)
+      setIsOpen(data.length > 0)
+
       // Parallelize local DB search and global Nominatim geocoding
       const [localData, nominatimResponse] = await Promise.all([
         searchClimbingPlaces(q),
