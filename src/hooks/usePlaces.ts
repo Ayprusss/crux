@@ -131,5 +131,18 @@ export function usePlaces(bounds: MapBounds | null, filters: FilterState, savedI
     })
   }, [allPlaces, bounds, filters, savedIds])
 
-  return { places, loading, error, totalCached: allPlaces.length }
+  const refresh = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const places = await fetchAllPlaces()
+      setAllPlaces(places)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load places")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return { places, loading, error, totalCached: allPlaces.length, refresh }
 }

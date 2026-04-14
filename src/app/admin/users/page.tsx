@@ -1,5 +1,5 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server"
-import { ShieldAlert, Users, ShieldCheck, user, Check, X, Shield } from "lucide-react"
+import { ShieldAlert, Users, ShieldCheck, User, Check, X, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { nominateUser, approveEscalation, rejectEscalation } from "@/app/actions/admin"
 
@@ -12,6 +12,15 @@ export default async function AdminUsersPage() {
 
   const adminClient = createAdminClient()
 
+  // Fetch all users
+  const { data: profiles } = await adminClient
+    .from("profiles")
+    .select("id, display_name, email, role, created_at")
+    .order("created_at", { ascending: false })
+
+  const currentUserProfile = profiles?.find((p) => p.id === currentUser?.id)
+  const isSuperAdmin = currentUserProfile?.role === "admin"
+
   // Fetch pending escalations
   const { data: activeNominations } = await adminClient
     .from("role_escalations")
@@ -23,12 +32,6 @@ export default async function AdminUsersPage() {
     .eq("status", "pending")
     .order("created_at", { ascending: false })
 
-  // Fetch all users
-  const { data: profiles } = await adminClient
-    .from("profiles")
-    .select("id, display_name, email, role, created_at")
-    .order("created_at", { ascending: false })
-
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
@@ -37,7 +40,7 @@ export default async function AdminUsersPage() {
         <p className="text-muted-foreground mt-1 font-medium">Dual-approval escalation framework.</p>
       </div>
 
-      {activeNominations && activeNominations.length > 0 && (
+      {isSuperAdmin && activeNominations && activeNominations.length > 0 && (
         <div className="space-y-4 mb-12">
           <h2 className="text-lg font-bold flex items-center gap-2 text-amber-600">
             <ShieldAlert className="w-5 h-5" /> 
@@ -136,7 +139,7 @@ export default async function AdminUsersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                       {!isAdmin && !hasPendingNomination && (
+                       {isSuperAdmin && !isAdmin && !hasPendingNomination && (
                          <form action={async () => {
                            "use server"
                            await nominateUser(profile.id)
@@ -146,7 +149,7 @@ export default async function AdminUsersPage() {
                             </Button>
                          </form>
                        )}
-                       {!isAdmin && hasPendingNomination && (
+                       {isSuperAdmin && !isAdmin && hasPendingNomination && (
                           <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-full border border-amber-200">
                             Pending Approval
                           </span>

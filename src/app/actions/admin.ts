@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import fs from "fs"
 import type { Place } from "@/types/place"
+import type { Suggestion, SuggestionUpdatePayload } from "@/types/suggestion"
 
 export async function checkAdmin() {
   const supabase = await createClient()
@@ -20,6 +21,20 @@ export async function checkAdmin() {
   return data?.role === "admin" || data?.role === "moderator"
 }
 
+export async function checkSuperAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+
+  return data?.role === "admin"
+}
+
 export async function rejectSuggestion(suggestionId: string, reviewerNotes?: string) {
   if (!(await checkAdmin())) throw new Error("Unauthorized")
 
@@ -27,7 +42,7 @@ export async function rejectSuggestion(suggestionId: string, reviewerNotes?: str
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not logged in")
 
-  const payload: any = {
+  const payload: SuggestionUpdatePayload = {
     status: "rejected",
     reviewed_by: user.id,
     reviewed_at: new Date().toISOString()
@@ -59,17 +74,19 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
   const adminClient = createAdminClient()
 
   // 1. Fetch the suggestion
-  const { data: suggestion, error: fetchError } = await adminClient
+  const { data, error: fetchError } = await adminClient
     .from("suggestions")
     .select("*")
     .eq("id", suggestionId)
     .single()
 
-  if (fetchError || !suggestion) throw new Error("Suggestion not found")
+  if (fetchError || !data) throw new Error("Suggestion not found")
+
+  const suggestion = data as Suggestion
   if (suggestion.status !== "pending") throw new Error("Suggestion already processed")
 
   let newPlaceId = suggestion.place_id
-  const proposedData = suggestion.data as Partial<Place>
+  const proposedData = suggestion.data as Partial<Place> & { isDelete?: boolean }
 
   // 2. Apply to DB
   if (suggestion.action === "add") {
@@ -95,7 +112,7 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
     if (insertError) throw insertError
     newPlaceId = newPlace.id
   } else if (suggestion.action === "edit" && suggestion.place_id) {
-    if ((proposedData as any).isDelete) {
+    if (proposedData.isDelete) {
       const { error: deleteError } = await adminClient
         .from("places")
         .delete()
@@ -103,7 +120,7 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
 
       if (deleteError) throw deleteError
     } else {
-      const updatePayload: any = {
+      const updatePayload: Partial<Place> & { location?: string } = {
         name: proposedData.name,
         type: proposedData.type,
         environment: proposedData.environment,
@@ -129,14 +146,14 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
   }
 
   // 3. Mark suggestion approved
-  const payload: any = {
+  const payload: SuggestionUpdatePayload = {
     status: "approved",
     reviewed_by: user.id,
     reviewed_at: new Date().toISOString()
   }
 
   if (reviewerNotes) payload.notes = reviewerNotes
-  if (suggestion.action === "add") payload.place_id = newPlaceId // link new place
+  if (suggestion.action === "add") payload.place_id = newPlaceId as string // link new place
 
   const { data: updatedSuggestion, error: finalError } = await adminClient
     .from("suggestions")
@@ -167,7 +184,7 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
 // ==========================================
 
 export async function nominateUser(targetId: string) {
-  if (!(await checkAdmin())) throw new Error("Unauthorized")
+  if (!(await checkSuperAdmin())) throw new Error("Unauthorized")
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -212,7 +229,7 @@ export async function nominateUser(targetId: string) {
 }
 
 export async function approveEscalation(escalationId: string) {
-  if (!(await checkAdmin())) throw new Error("Unauthorized")
+  if (!(await checkSuperAdmin())) throw new Error("Unauthorized")
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -260,7 +277,7 @@ export async function approveEscalation(escalationId: string) {
 }
 
 export async function rejectEscalation(escalationId: string) {
-  if (!(await checkAdmin())) throw new Error("Unauthorized")
+  if (!(await checkSuperAdmin())) throw new Error("Unauthorized")
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -1,10 +1,12 @@
 "use client"
 
-import { useRef, useCallback, useState, useEffect } from "react"
+import { useRef, useCallback, useState, useEffect, useTransition } from "react"
 import maplibregl from "maplibre-gl"
 import "maplibre-gl/dist/maplibre-gl.css"
 import Map, { Source, Layer, Popup, NavigationControl, GeolocateControl } from "react-map-gl/maplibre"
 import type { MapRef, MapLayerMouseEvent } from "react-map-gl/maplibre"
+import { useAuth } from "@/components/auth/AuthProvider"
+import { verifyPlace } from "@/app/actions/admin"
 import type { Place } from "@/types/place"
 import { MAP_CONFIG } from "@/lib/map/config"
 import { getBoundsFromMap } from "@/lib/map/helpers"
@@ -18,6 +20,7 @@ import SearchBar from "@/components/search/SearchBar"
 import FilterBar from "@/components/places/FilterBar"
 import SuggestionFormPanel from "@/components/places/SuggestionFormPanel"
 import CurationFormPanel from "@/components/admin/CurationFormPanel"
+import AdminToolbelt from "@/components/admin/AdminToolbelt"
 import { Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -101,11 +104,24 @@ interface MapContainerProps {
 }
 
 export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapContainerProps) {
+  const { isAdmin } = useAuth()
+  const [isPending, startTransition] = useTransition()
   const mapRef = useRef<MapRef>(null)
   const { bounds, updateBounds } = useMapViewport()
   const { filters, updateFilters, resetFilters, toggleDiscipline } = useFilters()
   const { savedIds } = useFavorites()
-  const { places, loading, totalCached } = usePlaces(bounds, filters, savedIds)
+  const { places, loading, totalCached, refresh } = usePlaces(bounds, filters, savedIds)
+
+  const handleVerify = async (placeId: string) => {
+    startTransition(async () => {
+      try {
+        await verifyPlace(placeId)
+        await refresh()
+      } catch (err) {
+        console.error("Verification failed:", err)
+      }
+    })
+  }
 
   const [popupPlace, setPopupPlace] = useState<Place | null>(null)
   const [isClosingPopup, setIsClosingPopup] = useState(false)
@@ -206,12 +222,16 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
   }, [handleClosePopup])
 
   /** Fly map to a searched location */
-  const onSearchSelect = useCallback((lat: number, lng: number) => {
+  const onSearchSelect = useCallback((lat: number, lng: number, name: string, place?: Place) => {
     mapRef.current?.flyTo({
       center: [lng, lat],
-      zoom: 14,
+      zoom: 15,
       duration: 1500,
     })
+
+    if (place) {
+      setDetailPlace(place)
+    }
   }, [])
 
   /** Effect to handle jumpCoords from parent */
@@ -415,6 +435,7 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
           onEdit={() => setSuggestionMode("edit")}
           onDelete={() => setSuggestionMode("delete")}
           onCurate={() => setCurationMode(true)}
+          onVerify={() => handleVerify(detailPlace.id)}
         />
       )}
 
@@ -438,6 +459,16 @@ export default function MapContainer({ jumpCoords, isSavedOpen = false }: MapCon
              setSuggestionMode(null)
              setIsPickingLocation(true)
           }}
+        />
+      )}
+
+      {/* Global Admin Toolbelt */}
+      {isAdmin && detailPlace && !curationMode && (
+        <AdminToolbelt
+          place={detailPlace}
+          onVerify={() => handleVerify(detailPlace.id)}
+          onCurate={() => setCurationMode(true)}
+          isPending={isPending}
         />
       )}
     </div>
