@@ -1,4 +1,4 @@
-## 2024-04-13 - [Fix Privilege Escalation in Role Management]
-**Vulnerability:** A Privilege Escalation vulnerability existed where moderators could potentially nominate and approve themselves as admins. The server actions for role management (`nominateUser`, `approveEscalation`, `rejectEscalation`) were guarded only by `checkAdmin()`, which incorrectly permitted both admins and moderators.
-**Learning:** It's crucial to strictly separate moderation capabilities (e.g., handling suggestions) from administration capabilities (e.g., managing user roles) when implementing role-based access control. Relying on a shared `checkAdmin()` function for both contexts was unsafe.
-**Prevention:** Introduce a stricter validation function like `checkSuperAdmin()` to explicitly verify the 'admin' role, and apply it to all role-escalation server actions and UI elements to prevent unauthorized access.
+## 2024-04-15 - Insecure File System Access in Server Actions
+**Vulnerability:** Debug logging logic was using `fs.appendFileSync` to write raw error objects directly to the local filesystem (`update_log.txt`) within Server Actions.
+**Learning:** This exposes sensitive database configurations, queries, and internal application states if the log file is accessible. It's also an anti-pattern in serverless deployments which could cause application crashes.
+**Prevention:** Avoid any local file system operations (`fs`) for logging or storing data in Server Actions. Use structured, secure logging services designed for serverless environments.
