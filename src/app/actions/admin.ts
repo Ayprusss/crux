@@ -3,7 +3,6 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
-import fs from "fs"
 import type { Place } from "@/types/place"
 import type { Suggestion, SuggestionUpdatePayload } from "@/types/suggestion"
 
@@ -161,13 +160,6 @@ export async function approveSuggestion(suggestionId: string, reviewerNotes?: st
     .eq("id", suggestionId)
     .select()
 
-  try {
-    fs.appendFileSync(
-      "update_log.txt", 
-      `\n[${new Date().toISOString()}] UPDATE attempt. Error: ${finalError?.message || 'none'}. Rows updated: ${updatedSuggestion?.length || 0}.\n`
-    );
-  } catch (e) {}
-
   if (finalError) throw finalError
   
   if (!updatedSuggestion || updatedSuggestion.length === 0) {
@@ -219,10 +211,6 @@ export async function nominateUser(targetId: string) {
       requested_role: "admin",
       nominated_by: user.id
     })
-
-  try {
-    fs.appendFileSync("update_log.txt", `\n[NOMINATE ERROR TEST] ${error ? JSON.stringify(error) : 'success'}\n`);
-  } catch(e) {}
 
   if (error) throw error
   revalidatePath("/admin", "layout")
