@@ -16,8 +16,9 @@ export interface Place {
   operating_hours?: Record<string, string> | null
   photos?: string[] | null
   osm_id: number | null
+  openbeta_id: string | null
   submitted_by: string | null
-  source: "osm" | "user" | "curated"
+  source: "osm" | "user" | "curated" | "openbeta"
   verified: boolean
   created_at: string
   updated_at: string
