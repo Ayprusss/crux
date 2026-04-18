@@ -21,7 +21,7 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 // ── Select which regions to seed ─────────────────────────────────
-const SEED_REGIONS = ["PEI"]
+const SEED_REGIONS = ["Ontario", "Quebec", "British Columbia", "Alberta", "Nova Scotia", "New Brunswick", "Manitoba", "Saskatchewan", "Newfoundland and Labrador", "Prince Edward Island"]
 
 // ── Helpers ──────────────────────────────────────────────────────
 function sleep(ms: number) {
