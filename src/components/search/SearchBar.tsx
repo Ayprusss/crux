@@ -37,11 +37,18 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cacheRef = useRef<Record<string, UnifiedResult[]>>({})
 
   const hybridSearch = useCallback(async (q: string) => {
     if (q.length < 3) {
       setResults([])
       setIsOpen(false)
+      return
+    }
+
+    if (cacheRef.current[q]) {
+      setResults(cacheRef.current[q])
+      setIsOpen(cacheRef.current[q].length > 0)
       return
     }
 
@@ -54,7 +61,7 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
         fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&countrycodes=ca,us`,
           { headers: { "User-Agent": "CruxClimbingMap/1.0" } }
-        ).then(res => res.json())
+        ).then(res => res.json() as Promise<NominatimResult[]>)
       ])
 
       const unified: UnifiedResult[] = [];
@@ -90,6 +97,7 @@ export default function SearchBar({ onSelect }: SearchBarProps) {
         })
       }
 
+      cacheRef.current[q] = unified
       setResults(unified)
       setIsOpen(unified.length > 0)
     } catch (err) {

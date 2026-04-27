@@ -58,6 +58,7 @@ export default function SuggestionFormPanel({
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchCacheRef = useRef<Record<string, any[]>>({})
   const [geoLoading, setGeoLoading] = useState(false)
   
   // File state
@@ -72,10 +73,16 @@ export default function SuggestionFormPanel({
       return
     }
     searchDebounceRef.current = setTimeout(async () => {
+      if (searchCacheRef.current[q]) {
+        setSearchResults(searchCacheRef.current[q])
+        return
+      }
+
       setIsSearching(true)
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&countrycodes=ca,us`, { headers: { "User-Agent": "CruxClimbingMap/1.0" } })
         const data = await res.json()
+        searchCacheRef.current[q] = data
         setSearchResults(data)
       } catch (err) {
         console.error(err)

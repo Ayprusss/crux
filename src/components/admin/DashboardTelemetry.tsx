@@ -108,7 +108,7 @@ export default function DashboardTelemetry({ data }: DashboardTelemetryProps) {
               <Tooltip 
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
                 itemStyle={{ fontWeight: 600, color: 'black' }}
-                formatter={(value: number) => [value, "Locations"]}
+                formatter={(value: any) => [value, "Locations"]}
               />
               <Legend 
                 verticalAlign="bottom" 
