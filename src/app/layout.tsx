@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Outfit, Geist_Mono } from "next/font/google";
+import { Outfit, Geist_Mono, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { createClient } from "@/lib/supabase/server";
 
 const outfit = Outfit({
@@ -12,6 +13,12 @@ const outfit = Outfit({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const barlowCondensed = Barlow_Condensed({
+  variable: "--font-barlow",
+  subsets: ["latin"],
+  weight: ["700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -36,12 +43,15 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${outfit.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${outfit.variable} ${geistMono.variable} ${barlowCondensed.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AuthProvider initialUser={user} initialIsAdmin={isAdmin}>
-          {children}
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider initialUser={user} initialIsAdmin={isAdmin}>
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
