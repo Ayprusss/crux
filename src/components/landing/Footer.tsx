@@ -1,29 +1,51 @@
 import Link from "next/link"
-import { MapPin } from "lucide-react"
+import { MountainIcon } from "@/components/ui/MountainIcon"
+
+const links = [
+  { label: "Features", href: "/#features" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Map", href: "/map" },
+  { label: "GitHub", href: "https://github.com", external: true },
+  { label: "Privacy", href: "#" },
+]
 
 export default function Footer() {
   return (
-    <footer className="w-full border-t bg-muted/40 py-12">
-      <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-6 px-4 sm:px-8">
-        <div className="flex flex-col items-center md:items-start gap-2">
-          <Link href="/" className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-primary" />
-            <span className="text-lg font-bold tracking-tight">Crux</span>
+    <footer className="w-full" style={{ backgroundColor: "#0c120b" }}>
+      <div className="container mx-auto px-4 sm:px-8 py-14">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+          {/* Brand */}
+          <Link href="/" className="group flex items-center gap-2.5">
+            <MountainIcon className="h-5 w-5 text-primary transition-transform group-hover:scale-110" />
+            <span className="text-lg font-black tracking-tight text-white">Crux</span>
           </Link>
-          <p className="text-sm text-muted-foreground text-center md:text-left">
-            A community-driven climbing map. Discover spots, suggest edits.
-          </p>
+
+          {/* Nav */}
+          <nav className="flex flex-wrap gap-x-8 gap-y-2">
+            {links.map((l) => (
+              <Link
+                key={l.label}
+                href={l.href}
+                target={l.external ? "_blank" : undefined}
+                rel={l.external ? "noopener noreferrer" : undefined}
+                className="text-sm font-medium transition-colors"
+                style={{ color: "rgba(255,255,255,0.4)" }}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
         </div>
-        <div className="flex gap-6 text-sm font-medium text-muted-foreground">
-          <Link href="/#features" className="hover:text-foreground">
-            Features
-          </Link>
-          <Link href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">
-            GitHub
-          </Link>
-          <Link href="#" className="hover:text-foreground">
-            Privacy
-          </Link>
+
+        <div className="mt-10 pt-8 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+          style={{ borderColor: "rgba(255,255,255,0.07)" }}
+        >
+          <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.25)" }}>
+            © {new Date().getFullYear()} Crux. Community-driven climbing directory.
+          </p>
+          <p className="text-[11px] font-bold tracking-[0.12em] uppercase" style={{ color: "rgba(255,255,255,0.15)" }}>
+            Open Source · Built with ♥ by climbers
+          </p>
         </div>
       </div>
     </footer>
