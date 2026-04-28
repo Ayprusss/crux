@@ -8,6 +8,7 @@ import { useState, useTransition } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { verifyPlace } from "@/app/actions/admin"
 import ConditionFeed from "@/components/places/ConditionFeed"
+import RouteList from "@/components/places/RouteList"
 
 const SHOW_INDOOR_CONDITIONS = false; // Future release toggle
 
@@ -176,6 +177,11 @@ export default function DetailPanel({ place, onClose, onEdit, onDelete, onCurate
               </div>
             </div>
           </div>
+        )}
+
+        {/* Routes & Problems (outdoor places with OpenBeta data) */}
+        {place.environment === "outdoor" && (
+          <RouteList placeId={place.id} />
         )}
 
         {/* Description */}
